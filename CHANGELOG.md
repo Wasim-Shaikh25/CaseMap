@@ -4,6 +4,35 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (72) — provision lookup gets test coverage; rhetorical-role embedding fallback tried and rejected; Qwen3-vs-MiniLM decision closed
+
+Owner asked to tackle the two remaining "what's next" items (rhetorical-role
+fixed phrases, provision-lookup test coverage) and close out the long-open
+Qwen3 embedding decision.
+
+1. **`tests/test_provision_lookup.py` (new, 8 tests).** Fake `requests.get`
+   (real regex/confidence-gate/cache logic, faked network response) —
+   confident match, judgment-result correctly skipped, wrong-section-number
+   correctly skipped, no results, non-OK response, `ConnectionError` never
+   crashes, cache hits exactly once per unique query. Full suite: 70 passed
+   (up from 62), 1 skipped.
+2. **Rhetorical-role embedding fallback: tried, tested against real data,
+   rejected.** Same fix pattern as (68)/(70) — reuse `all-MiniLM-L6-v2`
+   against `RHETORICAL_ROLE_CUES`'s own phrases as anchors. Built
+   `scripts/tune_rhetorical_embedding.py`, ran it against all 22 real
+   `testdata/*.txt` judgments before wiring it in, and roughly half the
+   matches were wrong (header/caption noise mistaken for arguments, wrong
+   role on real content). Reverted (`git checkout -- src/rhetorical_roles.py`)
+   rather than ship something less trustworthy than the plain phrase
+   matcher it would have replaced. Full writeup + examples in `FINDINGS.md`
+   F-19. `RHETORICAL_ROLE_CUES` stays a genuinely open item — needs an
+   actual trained classifier, not another parse-based trick.
+3. **Qwen3-Embedding-0.6B decision: closed, rejected.** Owner's call: stay
+   on `all-MiniLM-L6-v2`. ~112x the per-sentence cost for a ~40%-different
+   (not more correct, just different) pick isn't worth it given this
+   pipeline's design center is small, CPU-friendly models throughout.
+   `FINDINGS.md` F-15 updated in place (struck through, not deleted).
+
 ## 2026-09-11 (71) — correction to (70): remove the `neg`-dependency polarity signal, keep only verb lemmas
 
 (70)'s dependency-parse polarity fix was tested immediately after landing

@@ -9,7 +9,52 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 8 · **Fixed:** 10 · **Superseded:** 0
+**Open:** 7 · **Fixed:** 11 · **Superseded:** 0
+
+## F-19 — Tried and rejected: embedding-similarity fallback for `RHETORICAL_ROLE_CUES`
+
+**Date:** 2026-09-11
+**One-liner:** Same fixed-phrase-list problem as F-16/F-18, attempted the
+same fix pattern (reuse an already-loaded small model, no training) for
+`rhetorical_roles.py`'s Facts/Issues/Arguments/Precedent/Analysis/Ruling
+tagging — and it made role tagging **less** trustworthy, not more. Reverted
+before merging; recorded here so the approach isn't tried again without new
+information (same honesty standard as the Qwen3-vs-MiniLM decision above).
+
+**What was tried:** `match_cue_embedding()` — encode each of
+`RHETORICAL_ROLE_CUES`'s own phrases with `sentence_transformers/
+all-MiniLM-L6-v2` (already a mandatory dependency, used elsewhere for
+embedding centrality — no new model), average into one anchor vector per
+role, and compare a paragraph's embedding to all six via cosine similarity.
+Only fire above an absolute threshold AND a margin over the runner-up, to
+avoid guessing on ambiguous cases.
+
+**Why it failed:** built `scripts/tune_rhetorical_embedding.py` and ran it
+against all 22 real `testdata/*.txt` judgments before wiring this in live —
+the same "measure before shipping" discipline used throughout this session.
+Result: roughly half of the 26 "embedding_matched" tags it produced were
+wrong, and several were clear header/caption noise mistaken for real
+content — `"DATE OF JUDGMENT10/10/1975"` → tagged PRECEDENT, `"Source:
+https://indiankanoon.org/doc/..."` → tagged ARGUMENTS_PETITIONER,
+`"PETITIONER: U.P. State Electricity Board"` (a caption label) → tagged
+ARGUMENTS_PETITIONER purely because the word "petitioner" appears. Worse,
+some misfires looked plausible enough to pass a casual read: `"Heard the
+learned counsel for the parties."` → tagged ARGUMENTS_PETITIONER when it's
+much closer to the existing ANALYSIS cue ("having heard"); `"4. Brief facts
+which are necessary to dispose of this appeal..."` → tagged
+ARGUMENTS_PETITIONER when it's literally FACTS. Short cue phrases are too
+weak an anchor for six-way role classification with generic sentence
+embeddings — the model latches onto surface word overlap ("petitioner"
+appears → ARGUMENTS_PETITIONER) rather than actual argumentative role.
+
+**Disposition:** reverted (`git checkout -- src/rhetorical_roles.py`); the
+plain phrase/fuzzy matcher is unchanged and still the only role-tagging
+signal. `RHETORICAL_ROLE_CUES` remains a genuinely open item — per
+`opennyai_bridge.py:122`'s already-noted seam, this needs an actual trained
+classifier (OpenNyAI's own rhetorical-role baseline is the known candidate,
+unconfirmed inference entrypoint), not another parse-based generalization.
+`scripts/tune_rhetorical_embedding.py` kept as evidence of what was tried
+and why it didn't work, same as the Qwen3-vs-MiniLM comparison scripts.
 
 ## F-18 — `DENIAL_MARKERS`/`ASSERTION_MARKERS` fixed-phrase polarity missed real denials/assertions; added a dependency-parse signal alongside them
 
@@ -98,6 +143,18 @@ by design). Rendered and screenshot-checked in both the per-document report
 (network-dependent; a mocked-response test is a reasonable follow-up, not
 done this pass).
 
+**Addendum, 2026-09-11: test coverage added.** `tests/test_provision_lookup.py`
+(8 tests) — a fake `requests.get` (same pattern as
+`test_opennyai_bridge.py`'s fake NER model: real parsing/gating logic,
+faked network response) covers a confident bare-statute match, a judgment
+result correctly skipped (not mistaken for statute text), a
+right-docsource-wrong-section-number mismatch correctly skipped, no
+results, a non-OK HTTP response, a raised `ConnectionError` (must degrade
+to `None`, never crash document processing), and the in-process cache
+(one outbound call per unique query, confirmed via a call counter; two
+different queries resolve independently). All 8 pass; full suite now 70
+passed, 1 skipped.
+
 ## F-16 — `EVENT_KEYWORDS` fixed-phrase event detection missed real events; replaced with a dependency-parse (SRL) layer, no new model
 
 **Date:** 2026-09-11
@@ -172,13 +229,19 @@ code rather than trusted at face value.
 
 **Genuinely open (real, unresolved):**
 
-1. **Qwen3-Embedding-0.6B adoption decision.** Evaluated for real (F-10):
-   separates same-matter document pairs from unrelated ones by roughly double
-   the margin of the current default (~0.41 vs. ~0.24 spread, small sample).
-   `EMBED_MODEL` in `src/casemap_service.py:49` is still `"all-MiniLM-L6-v2"`
-   (confirmed by direct read, 2026-09-11). This is an **owner decision**
-   (`HANDOFF.md` §10), not an engineering task — do not flip the default
-   without it.
+1. ~~**Qwen3-Embedding-0.6B adoption decision.**~~ **Closed, 2026-09-11:
+   owner decision is to reject Qwen3-Embedding-0.6B and keep
+   all-MiniLM-L6-v2.** Evaluated for real (F-10): Qwen separates same-matter
+   document pairs from unrelated ones by roughly double the margin of the
+   current default (~0.41 vs. ~0.24 spread, small sample), but F-12 measured
+   it at ~112x MiniLM's per-sentence cost on real hardware (32.7s vs 0.29s
+   for 50 sentences) with picks that differ from MiniLM's ~40% of the time
+   while never being nonsense in spot-checks — a real trade in WHICH valid
+   sentence/pair gets surfaced, not a correctness regression MiniLM has and
+   Qwen doesn't. Given this pipeline's whole design center (small models,
+   CPU-friendly, no heavy weights) the owner's call is to stay on MiniLM;
+   `EMBED_MODEL` in `src/casemap_service.py:49` stays
+   `"all-MiniLM-L6-v2"`. Not open any further.
 2. **Docling is not installed in this project's own `.venv`.** Confirmed
    directly: `import docling` fails there (2026-09-11). It's proven to work
    on real digital + scanned corpora in a *separate* evaluation venv (F-4,

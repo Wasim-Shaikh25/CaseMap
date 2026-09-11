@@ -26,7 +26,18 @@ is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 71: correction to (70) — removed the `neg`-dependency polarity signal after testing against a real document showed it over-fired on ordinary negated argument, see FINDINGS.md F-18's correction note)
+**Last updated:** 2026-09-11 (entry 72: provision-lookup test coverage added, rhetorical-role embedding fallback tried and rejected after real-data testing, Qwen3-vs-MiniLM decision closed — see FINDINGS.md F-19 and F-15)
+
+**2026-09-11 — Three items closed: test coverage, a rejected experiment, and a long-open decision.**
+`tests/test_provision_lookup.py` (8 new tests, fake network responses) closes the one gap noted in F-17 — full
+suite now 70 passed, 1 skipped. A rhetorical-role embedding fallback (same pattern as the event/polarity fixes:
+reuse `all-MiniLM-L6-v2` against `RHETORICAL_ROLE_CUES`'s own phrases) was built, tested against all 22 real
+`testdata/*.txt` judgments via a new tuning script BEFORE wiring it in, found to mislabel roughly half its matches
+(header/caption noise mistaken for arguments, wrong roles on real content), and reverted rather than shipped —
+`RHETORICAL_ROLE_CUES` remains open, genuinely needs a trained classifier, not another parse trick. See
+`FINDINGS.md` F-19 for the full writeup and examples. Separately, the long-open Qwen3-Embedding-0.6B adoption
+question is now closed: owner's decision is to keep `all-MiniLM-L6-v2` (`FINDINGS.md` F-15, struck through in
+place, not deleted).
 
 **2026-09-11 — Polarity classification: dependency-parse signal added alongside `DENIAL_MARKERS`/`ASSERTION_MARKERS`.**
 Same fixed-phrase-list gap as entry (68)'s event detection fix, this time in `_classify_polarity()` — the function
