@@ -39,6 +39,24 @@ the notice was invalid" now correctly returns `ASSERTS`; existing phrase-list
 cases and a neutral control sentence unaffected. Full `pytest`: 62 passed, 1
 skipped, no regressions.
 
+**Correction, 2026-09-11 (same day, CHANGELOG 71):** the `neg`-dependency
+half of the fix above was tested against a real document immediately after
+landing — the owner's own writ petition
+(`temp/2026-09-10-real-petition-run/BCI_NOC_WP.txt`, never committed, run
+locally only) — and it was wrong. An argumentative legal brief is full of
+negation as ordinary reasoning ("does not maintain", "cannot accomplish",
+"is not distinguishable") that is not one party denying another's fact.
+Blanket "any negated verb = DENIES" mislabeled **20 of 111 events (18%)**
+DENIES on that real document, nearly all of them ordinary argument, not
+conflicts — DENIES/ASSERTS exists specifically to feed `label_edge()`'s
+POTENTIAL_CONFLICT pairing between two events, not to flag every negated
+sentence. **Removed** the `neg`-dependency check; kept only the verb-lemma
+sets (`DENIAL_VERB_LEMMAS`/`ASSERTION_VERB_LEMMAS`), which still catch real
+phrasing the old list missed ("refutes the claim", "counsel contends that")
+without the flood. Re-verified on the same real document post-correction:
+DENIES dropped from 20 to 1, ASSERTS unchanged at 3. `pytest`: still 62
+passed, 1 skipped.
+
 ## F-17 — New capability: opt-in provision lookup (`src/provision_lookup.py`), the pipeline's first outbound network call
 
 **Date:** 2026-09-11

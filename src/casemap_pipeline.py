@@ -781,21 +781,27 @@ DENIAL_MARKERS = ["denies", "denied", "no such", "did not receive", "never recei
 ASSERTION_MARKERS = ["states that", "submits that", "acknowledges", "confirms",
                      "admits", "it is averred"]
 
-# Dependency-parse polarity signal (F-18), UNION'd with the phrase lists
-# above rather than replacing them -- same reasoning as EVENT_VERB_LEMMAS:
+# Verb-lemma polarity signal (F-18), UNION'd with the phrase lists above
+# rather than replacing them -- same reasoning as EVENT_VERB_LEMMAS:
 # DENIAL_MARKERS/ASSERTION_MARKERS only fire on an exact phrase ("did not
-# receive") and miss the same claim in any other phrasing ("has not
-# received", "never was paid", "is denying", "refutes the claim"). Two
-# independent signals from en_core_web_sm's own parse, already loaded for
-# entity extraction, catch what the phrase list can't:
-#   1. Real syntactic negation (spaCy's "neg" dependency tag) -- catches
-#      "not"/"never" attached to ANY verb, regardless of which verb.
-#   2. A denial/assertion VERB LEMMA as the sentence's own root or a clausal
-#      complement verb -- catches "refutes"/"disputes"/"contends"/"avers"
-#      etc. that DENIAL_MARKERS/ASSERTION_MARKERS never enumerated.
+# receive") and miss the same claim in any other phrasing ("refutes the
+# claim", "counsel contends that"). One VERB LEMMA (from en_core_web_sm's
+# own parse, already loaded for entity extraction, no new model) catches
+# every inflection a phrase list would have to enumerate one at a time.
+#
+# Deliberately does NOT also key off raw syntactic negation (spaCy's "neg"
+# dependency tag, "not"/"never" attached to ANY verb) -- that was tried
+# first and tested against a real writ petition
+# (temp/2026-09-10-real-petition-run/BCI_NOC_WP.txt, never committed): an
+# argumentative legal brief is full of negation as ordinary reasoning ("does
+# not maintain", "cannot accomplish") that is not one party denying
+# another's fact. That version mislabeled 20/111 events (18%) DENIES on
+# real text, nearly all ordinary argument. DENIES/ASSERTS exists to feed
+# label_edge()'s POTENTIAL_CONFLICT pairing, not to flag every negated
+# sentence -- verb lemma alone is the more precise signal.
 # Idiomatic non-verbal phrases ("false and baseless", "wrongly alleged")
-# have no verb or negation particle to key off, which is exactly why the
-# original phrase lists are kept rather than dropped -- this is additive,
+# have no verb to key off, which is exactly why the original phrase lists
+# are kept rather than dropped -- this is additive,
 # like F-16/F-17, not a replacement.
 DENIAL_VERB_LEMMAS = {"deny", "dispute", "refute", "contest", "rebut", "refuse"}
 ASSERTION_VERB_LEMMAS = {"state", "submit", "acknowledge", "confirm", "admit",
@@ -1020,23 +1026,31 @@ def _classify_polarity(text_lower: str) -> str:
     if any(m in text_lower for m in ASSERTION_MARKERS):
         return "ASSERTS"
 
-    # Phrase list found nothing -- try the dependency-parse signal before
-    # falling back to NEUTRAL (F-18). Original-case text is not available
-    # here (every caller already lowercases before calling, matching the
-    # phrase-list checks above); en_core_web_sm's dependency parse and
-    # lemmatizer both degrade gracefully on lowercased input -- POS tagging
-    # is somewhat less accurate on it, but dep_=="neg" and verb lemmas are
-    # stable enough for this purpose, and changing every call site's
-    # lowercasing to preserve case was judged not worth the churn for that
-    # marginal accuracy gain.
+    # Phrase list found nothing -- try the verb-lemma signal before falling
+    # back to NEUTRAL (F-18). Deliberately verb-lemma ONLY, not also raw
+    # syntactic negation (spaCy's "neg" dep tag) -- that was the first
+    # version of this fix, and testing it against a real writ petition
+    # (temp/2026-09-10-real-petition-run/BCI_NOC_WP.txt, never committed --
+    # see FINDINGS.md F-18's correction) showed why: an argumentative legal
+    # brief is FULL of negation as ordinary reasoning ("does not maintain",
+    # "cannot accomplish", "is not distinguishable") that is not one party
+    # denying another's fact -- DENIES/ASSERTS exists specifically to feed
+    # label_edge()'s POTENTIAL_CONFLICT pairing, not to flag every negated
+    # sentence. Blanket negation-as-DENIES mislabeled 20/111 events (18%) on
+    # that real document, nearly all ordinary argument, not conflicts.
+    # Verb lemma alone still catches real phrasing the old list missed
+    # ("refutes the claim", "has not received" only when phrased with an
+    # actual denial verb) without that flood. Original-case text is not
+    # available here (every caller already lowercases before calling,
+    # matching the phrase-list checks above); lemma matching is stable on
+    # lowercased input.
     global _NLP
     if _NLP is None:
         import spacy
         _NLP = spacy.load("en_core_web_sm")
     doc = _NLP(text_lower)
     verb_lemmas = {tok.lemma_ for tok in doc if tok.pos_ in ("VERB", "AUX")}
-    has_negation = any(tok.dep_ == "neg" for tok in doc)
-    if has_negation or (verb_lemmas & DENIAL_VERB_LEMMAS):
+    if verb_lemmas & DENIAL_VERB_LEMMAS:
         return "DENIES"
     if verb_lemmas & ASSERTION_VERB_LEMMAS:
         return "ASSERTS"

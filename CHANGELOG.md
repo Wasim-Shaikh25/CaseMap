@@ -4,6 +4,25 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (71) — correction to (70): remove the `neg`-dependency polarity signal, keep only verb lemmas
+
+(70)'s dependency-parse polarity fix was tested immediately after landing
+against a real document — the owner's own writ petition
+(`temp/2026-09-10-real-petition-run/BCI_NOC_WP.txt`, never committed, local
+run only) — via `casemap_service.process_document(lookup_provisions=...)`.
+Result: the blanket "any negated verb = DENIES" half of that fix mislabeled
+**20 of 111 events (18%)** DENIES, almost all of them ordinary negated legal
+argument ("does not maintain", "cannot accomplish"), not one party denying
+another's fact. `label_edge()`'s POTENTIAL_CONFLICT pairing is what
+DENIES/ASSERTS actually feeds — this was real noise, not a fix.
+
+Removed the `neg`-dependency tag check from `_classify_polarity()`; kept
+`DENIAL_VERB_LEMMAS`/`ASSERTION_VERB_LEMMAS` (still catches "refutes the
+claim", "counsel contends that" — real gaps in the old phrase list — without
+the flood). Re-ran the same real document post-fix: DENIES 20 → 1, ASSERTS
+unchanged at 3. See `FINDINGS.md` F-18's correction note. `pytest`: 62
+passed, 1 skipped, no regressions.
+
 ## 2026-09-11 (70) — polarity (DENIES/ASSERTS) gets a dependency-parse signal alongside the fixed phrase lists, same fix class as (68)
 
 Owner asked to fix `DENIAL_MARKERS`/`ASSERTION_MARKERS` the same way as (68)

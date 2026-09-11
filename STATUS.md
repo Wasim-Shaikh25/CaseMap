@@ -26,7 +26,7 @@ is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 70: polarity (DENIES/ASSERTS) gets a dependency-parse signal alongside the fixed phrase lists, see FINDINGS.md F-18)
+**Last updated:** 2026-09-11 (entry 71: correction to (70) — removed the `neg`-dependency polarity signal after testing against a real document showed it over-fired on ordinary negated argument, see FINDINGS.md F-18's correction note)
 
 **2026-09-11 — Polarity classification: dependency-parse signal added alongside `DENIAL_MARKERS`/`ASSERTION_MARKERS`.**
 Same fixed-phrase-list gap as entry (68)'s event detection fix, this time in `_classify_polarity()` — the function
