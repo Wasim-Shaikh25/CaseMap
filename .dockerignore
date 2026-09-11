@@ -1,0 +1,39 @@
+# Keep the build context small and never let anything privacy-sensitive or
+# purely local near the image — see server/app.py's "nothing is persisted"
+# contract; that applies to what we ship too, not just what the server does
+# at runtime.
+
+.git/
+.github/
+
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Real/fetched documents, scratch work — never belongs in an image.
+temp/
+real_pdfs/
+testdata/
+tests/
+
+# Local runtime state.
+.casemap_ocr_cache/
+casemap.db
+*.db
+poc_graph.json
+
+# Docs and project governance files — not needed at runtime.
+docs/
+*.md
+!README.md
+
+# Dev-only.
+run.ps1
+Dockerfile
+.dockerignore
+docker-compose.yml

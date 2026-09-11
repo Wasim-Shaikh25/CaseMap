@@ -1,0 +1,63 @@
+# VPS deployment — builds the image directly on the box from source (no
+# registry, nothing pushed to GitHub beyond the source itself). The image
+# is heavy (spaCy + the legal-NER model + sentence-transformers + gliner);
+# pushing/pulling it through GHCR would mean paying that transfer cost on
+# every deploy for no benefit when the build machine and the run machine
+# are the same box. See .github/workflows/deploy.yml, which SSHes in on
+# every push to main and runs exactly the second command below.
+#
+# First-time setup on the VPS:
+#   git clone https://github.com/Wasim-Shaikh25/CaseMap.git /opt/casemap
+#   cd /opt/casemap
+#   # edit Caddyfile: swap "your-domain.example" for your real domain (or
+#   # the VPS's bare IP if you don't have one yet -- see Caddyfile itself)
+#   docker compose up -d --build
+#
+# Redeploy after a merge to main (what the GitHub Actions workflow runs
+# over SSH):
+#   git fetch origin main && git reset --hard origin/main
+#   docker compose up -d --build --remove-orphans
+
+services:
+  casemap:
+    build: .
+    image: casemap:latest
+    restart: unless-stopped
+    # Not published to the public interface -- Caddy is the only thing
+    # that should be reachable from outside. 127.0.0.1-only makes it still
+    # reachable for local debugging over an SSH tunnel.
+    ports:
+      - "127.0.0.1:8756:8756"
+    environment:
+      PORT: "8756"
+      WARM_MODELS_ON_START: "true"
+    volumes:
+      # SaT + GLiNER download from Hugging Face on first load and aren't
+      # baked into the image -- without this, every redeploy (`docker
+      # compose up -d --build`) re-downloads both from scratch. See
+      # Dockerfile's HF_HOME comment for why this path specifically.
+      - hf_cache:/home/casemap/.cache/huggingface
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8756/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - casemap
+
+volumes:
+  caddy_data:
+  caddy_config:
+  hf_cache:

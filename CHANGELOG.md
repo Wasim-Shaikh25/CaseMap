@@ -4,6 +4,49 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (81) — Dockerized for VPS deployment; SSH-based rebuild-in-place (no image registry); Caddy reverse proxy; persistent Hugging Face model cache; VPS bootstrap script
+
+Owner decided to run this on a self-bought VPS (~4GB RAM) rather than upgrade the
+Render plan (see entry 80). Added:
+
+  - `Dockerfile` — `python:3.11.9-slim-bookworm`, tesseract-ocr + libglib2.0-0 system
+    deps, CPU-only PyTorch pinned from PyTorch's own index *before* the rest of
+    `requirements.txt`/`requirements-webapp.txt` install (otherwise plain pip grabs
+    the default CUDA build transitively via sentence-transformers/gliner — torch
+    itself plus every `nvidia_cu*`/cudnn/nccl wheel behind it, several GB of GPU
+    libraries a VPS with no GPU will never touch; confirmed by a real local build
+    that pulled a 554MB CUDA torch + a 553MB cudnn wheel before the fix, 196MB CPU
+    torch after). Runs as a non-root user (uid 10001).
+  - `.github/workflows/deploy.yml` — on every push to `main`, SSHes into the VPS and
+    runs `git fetch && git reset --hard && docker compose up -d --build` there.
+    Deliberately NOT a GHCR-publish-then-pull pipeline: the image is heavy (~4GB) and
+    the build machine and run machine are the same box, so pushing/pulling it through
+    a registry would only add transfer time for no benefit. Needs `VPS_HOST`,
+    `VPS_USER`, `VPS_SSH_KEY` repo secrets once the VPS exists (not yet provisioned).
+  - `docker-compose.yml` — `casemap` service (`build: .`, bound to `127.0.0.1` only —
+    not the public interface) plus a `caddy` reverse proxy service (automatic
+    Let's Encrypt HTTPS) fronting it on 80/443. `Caddyfile` holds the domain.
+  - `scripts/vps-bootstrap.sh` — one-time, idempotent Ubuntu setup: installs Docker
+    Engine, adds a 2GB swap file (real local testing showed ~2.9GB peak RSS
+    processing one document with all 4 model layers warm — on a 4GB box that's
+    tighter headroom than ideal once OS/Docker/Caddy overhead is counted; swap is
+    the cheap safety net, not a substitute for enough RAM in steady state), and
+    configures ufw (22/80/443 only).
+  - Persistent Hugging Face model cache: `HF_HOME` set to a path under the
+    non-root user's home, pre-created with correct ownership in the Dockerfile so
+    Docker initializes a mounted named volume there as writable (not root-owned).
+    Without this, SaT + GLiNER (downloaded from Hugging Face at first *runtime*
+    load, unlike `en_legal_ner_sm`/`en_core_web_sm` which install as pip packages
+    at build time) would re-download on every redeploy. Verified with two real
+    sequential containers sharing one volume: cold boot ~141s, warm-cache boot 23s,
+    logs confirm zero re-download on the second run.
+
+Fully verified locally (Docker Desktop, not just Render/CI logs): image builds
+(3.95GB), boots, all 4 ML layers warm-load, `/api/health` reports correctly, and a
+real test document processes successfully end-to-end through the containerized API
+(HTTP 200, real graph returned). Not yet deployed to an actual VPS — that's next,
+once the owner provisions one.
+
 ## 2026-09-11 (80) — deployed to Render (free tier, then found it OOM-crashes mid-request); added a VERSION file, commit hash, and per-model status to `/api/health`; added an opt-out startup warm-load for all ML layers
 
 Deployed to Render as a web service (`casemap`, https://casemap.onrender.com) via the

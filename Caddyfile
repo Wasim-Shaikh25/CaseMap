@@ -1,0 +1,13 @@
+# Replace the placeholder below with your real domain once its DNS A
+# record points at the VPS's IP. Caddy then provisions and auto-renews a
+# real Let's Encrypt certificate on first request -- nothing else to
+# configure for HTTPS.
+#
+# No domain yet? Point this at the VPS's bare IP instead (e.g. "1.2.3.4")
+# -- Caddy serves plain HTTP for an IP address (it can't get a public cert
+# for one) so you're not blocked on DNS, but switch to a real domain before
+# putting real documents through this.
+
+your-domain.example {
+    reverse_proxy casemap:8756
+}

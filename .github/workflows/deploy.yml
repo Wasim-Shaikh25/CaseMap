@@ -1,0 +1,51 @@
+name: Deploy to VPS
+
+# Fires on every push to main -- i.e. every PR merge, plus direct pushes.
+# Builds nothing here: this workflow only SSHes into the VPS and tells it
+# to pull the new source and rebuild the image in place (docker-compose.yml's
+# `build: .`). No image is ever pushed to or pulled from a registry -- the
+# image is heavy (spaCy + en_legal_ner_sm + sentence-transformers + gliner)
+# and the build machine and the run machine are the same box, so shipping it
+# through GHCR would only add transfer time for no benefit.
+#
+# One-time setup this workflow depends on:
+#   1. On the VPS: git clone the repo to the path below, then
+#      `docker compose up -d --build` once by hand to confirm it works.
+#   2. In this repo's Settings -> Secrets and variables -> Actions, add:
+#        VPS_HOST      - the VPS's IP or hostname
+#        VPS_USER      - the SSH user (with docker permissions, no sudo
+#                         password prompt)
+#        VPS_SSH_KEY   - a private key (ed25519) whose public half is in
+#                         that user's ~/.ssh/authorized_keys on the VPS.
+#                         Use a deploy-only key, not a personal one.
+#      Optionally add a repo VARIABLE (not secret):
+#        VPS_DEPLOY_PATH - defaults to /opt/casemap if unset
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  DEPLOY_PATH: ${{ vars.VPS_DEPLOY_PATH || '/opt/casemap' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: git pull + rebuild in place on the VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "set -e
+             cd '${{ env.DEPLOY_PATH }}'
+             git fetch origin main
+             git reset --hard origin/main
+             docker compose up -d --build --remove-orphans
+             docker image prune -f"
