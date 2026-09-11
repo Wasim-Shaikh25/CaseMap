@@ -596,16 +596,20 @@ def _build_provisions(doc_results: list[dict]) -> list[dict]:
             if not key:
                 continue
             g = groups.setdefault(key, {"section": prov["raw"], "act": prov["act"],
-                                         "documents": set(), "count": 0})
+                                         "documents": set(), "count": 0,
+                                         "statute_lookup": None})
             g["count"] += 1
             g["documents"].add(doc["name"])
             # Prefer the fullest spelling seen (the one WITH a year, when
             # one exists) over strictly first-seen.
             if prov["act"] and (not g["act"] or len(prov["act"]) > len(g["act"])):
                 g["act"] = prov["act"]
+            if prov.get("statute_lookup") and not g["statute_lookup"]:
+                g["statute_lookup"] = prov["statute_lookup"]
     return [{
         "key": key, "section": g["section"], "act": g["act"],
         "documents": sorted(g["documents"]), "count": g["count"],
+        "statute_lookup": g["statute_lookup"],
     } for key, g in groups.items()]
 
 
@@ -613,11 +617,19 @@ def _build_provisions(doc_results: list[dict]) -> list[dict]:
 # The pipeline — one document in, one result dict out.
 # ---------------------------------------------------------------------------
 def process_document(path: str, name: str, ml_nlp, ocr_engine: str = "tesseract",
-                     ocr_lang: str = "eng", force_ocr: bool = False) -> dict:
+                     ocr_lang: str = "eng", force_ocr: bool = False,
+                     lookup_provisions: bool = False) -> dict:
     """Full per-document extraction. Returns a result dict whose "events" key
     holds the graph nodes for this document; the rest is the per-document
     summary the UI and the report both read. `ml_nlp` is injected (loaded
     once by the caller); the SaT/GLiNER judges lazy-load as module singletons.
+
+    `lookup_provisions` (default False, opt-in): fetch each cited
+    provision's own text from IndianKanoon.org (provision_lookup.py) — one
+    outbound call per UNIQUE provision in this document, query is the bare
+    citation string only, never document content. Off unless the caller
+    explicitly asks, since it's the one part of this pipeline that reaches
+    the internet at all.
     """
     ext = os.path.splitext(name)[1].lower()
     if ext == ".pdf":
@@ -753,6 +765,15 @@ def process_document(path: str, name: str, ml_nlp, ocr_engine: str = "tesseract"
 
         all_amounts.extend(r["raw"] for r in det.get("amounts") or [])
         all_case_numbers.extend(r["raw"] for r in det.get("case_numbers") or [])
+
+    if lookup_provisions and provisions_detail:
+        from provision_lookup import lookup_provision
+        cache: dict[tuple[str, str], dict | None] = {}
+        for p in provisions_detail:
+            key = (p["raw"].strip().lower(), (p["act"] or "").strip().lower())
+            if key not in cache:
+                cache[key] = lookup_provision(p["raw"], p["act"])
+            p["statute_lookup"] = cache[key]
 
     fb = party_result_to_fallback_event(party_result, name, [(0, len(full_text), 1)])
     if fb is not None:

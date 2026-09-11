@@ -26,7 +26,17 @@ is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 68: event detection gets a dependency-parse (SRL) layer, replacing reliance on the fixed `EVENT_KEYWORDS` phrase list — no new model, see FINDINGS.md F-16)
+**Last updated:** 2026-09-11 (entry 69: new opt-in provision lookup — IndianKanoon.org fetch of a cited provision's own text, off by default, see FINDINGS.md F-17)
+
+**2026-09-11 — New capability: opt-in provision lookup, first outbound network call in this pipeline.** Owner
+asked for a free web lookup so a cited provision's own text shows up next to it, scoped explicitly to "only the
+provision, not client details." `src/provision_lookup.py` queries IndianKanoon.org's free search with the bare
+citation string, one call per unique provision, skips (returns `None`) on anything not confidently a bare-statute
+match rather than guessing. Wired through `casemap_service.process_document(lookup_provisions=False)` (default
+off) → `server/app.py`'s `/api/process` form field → a checkbox on the upload screen, unchecked by default with
+its own disclosure text. Dashboard privacy paragraph updated to state the toggle's effect rather than leave the
+old absolute claim technically wrong once it exists. Rendered in both the printable report and the live
+Provisions tab, verified in both themes. See FINDINGS.md F-17 for full detail. `pytest`: 62 passed, 1 skipped.
 
 **2026-09-11 — Event detection: WHO/ACTION/WHAT/WHEN from the dependency parse, not a phrase list.** Owner
 asked whether `EVENT_KEYWORDS` ("paid", "terminated", "filed on", ...) was hardcoded — confirmed yes — and

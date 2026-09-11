@@ -257,6 +257,7 @@ const App = {
     });
     const has = this.pendingFiles.length > 0;
     document.getElementById("caseNameRow").classList.toggle("hidden", !has);
+    document.getElementById("lookupProvisionsRow").classList.toggle("hidden", !has);
     document.getElementById("processBtn").classList.toggle("hidden", !has);
     if (has && !document.getElementById("caseNameInput").value) {
       document.getElementById("caseNameInput").value =
@@ -274,8 +275,10 @@ const App = {
     document.getElementById("progressText").textContent =
       `Processing ${this.pendingFiles.length} document(s) — this can take a minute or two…`;
 
+    const lookupProvisions = document.getElementById("lookupProvisionsInput").checked;
     const fd = new FormData();
     for (const f of this.pendingFiles) fd.append("files", f, f.name);
+    fd.append("lookup_provisions", lookupProvisions ? "true" : "false");
 
     try {
       const r = await fetch(API.process, { method: "POST", body: fd });
@@ -283,7 +286,7 @@ const App = {
       if (!r.ok) throw new Error(graph.error || `Backend error (${r.status})`);
       const caseObj = {
         id: "case_" + Date.now().toString(36),
-        name, createdAt: Date.now(), graph,
+        name, createdAt: Date.now(), graph, lookupProvisions,
       };
       Store.add(caseObj);
       if (this.pendingHandles) await HandleStore.save(caseObj.id, this.pendingHandles);
@@ -320,6 +323,7 @@ const App = {
       }
       const fd = new FormData();
       for (const f of files) fd.append("files", f, f.name);
+      fd.append("lookup_provisions", c.lookupProvisions ? "true" : "false");
       const r = await fetch(API.process, { method: "POST", body: fd });
       const graph = await r.json();
       if (!r.ok) throw new Error(graph.error || `Backend error (${r.status})`);
@@ -488,10 +492,16 @@ const App = {
       wrap.innerHTML = `<summary>Provisions cited <span class="n">${g.provisions.length}</span></summary>
         <div class="crowd-body"><div class="prov-row">
           ${g.provisions.map(p => `<span class="prov-chip" title="${esc(p.documents.join(", "))}">
-              <span class="prov-sec">${esc(p.section)}</span>
-              ${p.act ? `<span class="prov-act">${esc(p.act)}</span>`
-                      : `<span class="prov-act unnamed">Act not named nearby</span>`}
-              <span class="prov-count">×${p.count}</span>
+              <span class="prov-top">
+                <span class="prov-sec">${esc(p.section)}</span>
+                ${p.act ? `<span class="prov-act">${esc(p.act)}</span>`
+                        : `<span class="prov-act unnamed">Act not named nearby</span>`}
+                <span class="prov-count">×${p.count}</span>
+              </span>
+              ${p.statute_lookup ? `<div class="statute-lookup">
+                  <p>${esc(p.statute_lookup.snippet)}</p>
+                  <a href="${esc(p.statute_lookup.source_url)}" target="_blank" rel="noopener">Source: IndianKanoon — ${esc(p.statute_lookup.title)}</a>
+                </div>` : ""}
             </span>`).join("")}
         </div></div>`;
       body.appendChild(wrap);
@@ -658,8 +668,14 @@ const App = {
           <p class="chiprow">${parties}</p>` : ""}
 
         ${provisionsList ? `<h3>Provisions cited</h3>
-          <ul class="plain">${provisionsList.map(p =>
-            `<li><b>${esc(p.raw)}</b>${p.act ? ` — ${esc(p.act)}` : ` <i>(act not named nearby)</i>`}</li>`).join("")}</ul>` : ""}
+          <ul class="plain">${provisionsList.map(p => {
+            const sl = p.statute_lookup;
+            return `<li><b>${esc(p.raw)}</b>${p.act ? ` — ${esc(p.act)}` : ` <i>(act not named nearby)</i>`}
+              ${sl ? `<div class="statute-lookup">
+                  <p>${esc(sl.snippet)}</p>
+                  <a href="${esc(sl.source_url)}" target="_blank" rel="noopener">Source: IndianKanoon — ${esc(sl.title)}</a>
+                </div>` : ""}</li>`;
+          }).join("")}</ul>` : ""}
 
         ${dated.length ? `<h3>Chronology</h3><ul class="plain">${dated.map(n =>
           `<li><b>${n.data.date}</b> — ${esc(fullText(n))} <span class="src">(${loc(n)})</span></li>`).join("")}</ul>` : ""}

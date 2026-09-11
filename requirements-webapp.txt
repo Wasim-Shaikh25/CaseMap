@@ -25,3 +25,11 @@ wtpsplit-lite       # segment-any-text/sat-3l-sm, ONNX inference — sentence-
 gliner              # urchade/gliner_small-v2.1 — zero-shot span classifier,
                     # party-name judge: keep/drop an already-extracted
                     # candidate, never proposes new ones.
+
+# Opt-in only (off by default, see ui/index.html's disclosure text and
+# provision_lookup.py) — fetches a cited provision's own text from
+# IndianKanoon.org, one call per unique citation, query is the citation
+# string only, never document content. Was already present transitively
+# (huggingface_hub depends on it); pinned explicitly now that
+# provision_lookup.py imports it directly.
+requests

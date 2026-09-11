@@ -4,6 +4,40 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (69) — new, opt-in: cited provisions' own text fetched from IndianKanoon.org
+
+Owner asked for a free web lookup showing what a cited provision actually
+says, explicitly scoped to "only the provision, not client details." First
+outbound network call anywhere in this pipeline — recorded and disclosed
+accordingly (see `FINDINGS.md` F-17 for the full writeup).
+
+1. **`src/provision_lookup.py` (new).** `lookup_provision(section_raw, act)`
+   — one call per unique provision, query is the citation string alone.
+   Confidence-gated against IndianKanoon's own statute/judgment type marker
+   plus a section-number match in the result title; returns `None` (skips)
+   rather than guessing on anything less than a clear match.
+2. **`casemap_service.process_document(lookup_provisions=False)`** (default
+   off) — runs the lookup once per unique provision per document, attaches
+   `statute_lookup` to each `provisions_detail` entry and to the
+   cross-document `provisions` aggregation.
+3. **`server/app.py`**'s `/api/process` takes `lookup_provisions` as a form
+   field (`Form(False)`).
+4. **`ui/index.html`**: new checkbox on the upload screen, unchecked by
+   default, with its own disclosure text ("sends only the citation itself
+   ... never any document content"). Dashboard's privacy paragraph updated
+   to state the toggle's effect plainly rather than leave the older
+   absolute "only thing that ever leaves this device" claim technically
+   wrong once it exists. `ui/app.js`/`ui/styles.css`: rendered in both the
+   printable counsel report and the live **Provisions** tab.
+5. `requests` (already present transitively) pinned explicitly in
+   `requirements-webapp.txt` now that `provision_lookup.py` imports it
+   directly.
+
+Verified end-to-end against real `testdata/` documents through the running
+server — confident matches return correct statute text + source link,
+genuinely ambiguous citations skip cleanly. Screenshot-checked in both
+themes. Full `pytest`: 62 passed, 1 skipped, no regressions.
+
 ## 2026-09-11 (68) — event detection: dependency-parse (SRL) layer replaces reliance on the fixed `EVENT_KEYWORDS` phrase list, no new model
 
 Owner asked whether event detection was hardcoded ("paid"/"terminated"/"filed

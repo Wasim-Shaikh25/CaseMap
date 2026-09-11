@@ -31,8 +31,10 @@
           doesn't summarize, paraphrase, generate, or reason about your case; it only finds and organizes what's
           already on the page.</p>
         <p class="muted">Every case lives only in this browser — nothing is kept on the backend after processing.
-          The only thing that ever leaves this device is an anonymous page-load count (no document data, ever) so
-          the people behind this tool know it's actually being used.</p>
+          By default, the only thing that ever leaves this device is an anonymous page-load count (no document
+          data, ever) so the people behind this tool know it's actually being used. Turning on "Look up cited
+          provisions online" (off by default, on the upload screen) additionally sends each cited provision's
+          own citation — never document content — to IndianKanoon.org to fetch its text.</p>
         <div class="correctness-notice">
           <span class="glyph">⚠</span>
           <p><strong>Verify before relying on it.</strong> Extraction can miss or misread a fact — especially on
@@ -69,6 +71,14 @@
     <div id="caseNameRow" class="hidden">
       <input id="caseNameInput" type="text" placeholder="Name this case (e.g. Sharma v. State of MP)">
     </div>
+
+    <label id="lookupProvisionsRow" class="checkbox-row hidden">
+      <input type="checkbox" id="lookupProvisionsInput">
+      <span>Look up cited provisions online (Section/Act citations) so their actual text shows up next to them —
+        sends only the citation itself (e.g. "Section 125 CrPC"), never any document content, to
+        <a href="https://indiankanoon.org" target="_blank" rel="noopener">IndianKanoon.org</a>. Off by default;
+        skipped automatically whenever a match isn't clear.</span>
+    </label>
 
     <button id="processBtn" class="btn primary hidden" onclick="App.processFiles()">Process documents</button>
 

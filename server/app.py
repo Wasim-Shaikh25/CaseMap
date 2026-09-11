@@ -30,7 +30,7 @@ import tempfile
 import time
 import traceback
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -67,7 +67,12 @@ def health():
 
 
 @app.post("/api/process")
-async def process(files: list[UploadFile] = File(...)):
+async def process(files: list[UploadFile] = File(...),
+                  lookup_provisions: bool = Form(False)):
+    """`lookup_provisions`: opt-in only (see provision_lookup.py /
+    ui/index.html's disclosure text) — when true, each cited provision's own
+    text is fetched from IndianKanoon.org, one call per unique citation.
+    Only the citation string leaves the device; no document content."""
     t0 = time.time()
     bad = [f.filename for f in files
            if os.path.splitext(f.filename or "")[1].lower() not in ALLOWED_EXT]
@@ -90,7 +95,8 @@ async def process(files: list[UploadFile] = File(...)):
                 out.write(await f.read())
 
             try:
-                doc = service.process_document(dest, name, ml_nlp, ocr_engine="tesseract")
+                doc = service.process_document(dest, name, ml_nlp, ocr_engine="tesseract",
+                                               lookup_provisions=lookup_provisions)
             except Exception as exc:
                 traceback.print_exc()
                 doc_results.append({"name": name, "error": str(exc)})

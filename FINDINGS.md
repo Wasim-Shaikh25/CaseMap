@@ -9,7 +9,48 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 8 · **Fixed:** 8 · **Superseded:** 0
+**Open:** 8 · **Fixed:** 9 · **Superseded:** 0
+
+## F-17 — New capability: opt-in provision lookup (`src/provision_lookup.py`), the pipeline's first outbound network call
+
+**Date:** 2026-09-11
+**One-liner:** Owner asked to add a free web lookup so a cited provision's
+own text shows up next to the citation, explicitly scoped to "only the
+provision, not client details." This is a new capability, not a bug fix —
+recorded here because it's the first place this pipeline makes any outbound
+network call, which is a real change to the privacy posture stated on the
+dashboard and in `server/app.py`'s "nothing is persisted" docstring
+(persistence is unaffected; **egress** is the new thing).
+
+**What it does:** `provision_lookup.lookup_provision(section_raw, act)`
+queries IndianKanoon.org's free, no-login search (the same source the
+`testdata/` judgments themselves came from) with the citation string alone
+("Section 125 of the Code of Criminal Procedure") and returns the matching
+statute's own text snippet + source link — **or `None`**, whenever the
+result isn't confidently a bare-statute page (checked via IndianKanoon's own
+`docsource` type marker and a section-number match in the result title, not
+guessed). One outbound call per **unique** provision per document (in-process
+cache), never per citation instance.
+
+**Confirmed default-off:** wired through `casemap_service.process_document(
+lookup_provisions=False)` → `server/app.py`'s `/api/process` (`Form(False)`)
+→ a checkbox on `ui/index.html`'s upload screen, unchecked by default, with
+its own disclosure text next to it. The dashboard's privacy paragraph
+(`ui/index.html`) was updated to say so plainly rather than leave the older
+"the only thing that ever leaves this device is..." line technically wrong
+once this toggle exists.
+
+**Verified end-to-end** against real `testdata/` documents via the running
+server (`/api/process` with `lookup_provisions=true`): confident matches
+("section 303", "section 302", "section 34" → correct IPC text + source
+link) and correct skips on genuinely ambiguous citations ("s. 303" alone,
+with no "Section" keyword or Act name nearby — skipped rather than guessed,
+by design). Rendered and screenshot-checked in both the per-document report
+(`App.downloadReport()`) and the live cross-document **Provisions** tab
+(`App.renderProvisions()`), light and dark theme. Full `pytest`: 62 passed,
+1 skipped, no regressions — this feature has no test coverage of its own yet
+(network-dependent; a mocked-response test is a reasonable follow-up, not
+done this pass).
 
 ## F-16 — `EVENT_KEYWORDS` fixed-phrase event detection missed real events; replaced with a dependency-parse (SRL) layer, no new model
 

@@ -95,6 +95,12 @@ regex-only fallback.
    **documents** breakdown per file (structure tier, parties, sections),
    **provisions cited** across the whole bundle, a **parties** ladder, and
    a **conflicts** view (asserts vs. denies on the same fact).
+   - Optional, off by default: on the upload screen, **"Look up cited
+     provisions online"** fetches each cited provision's own text from
+     IndianKanoon.org (one call per unique citation — only the citation
+     string leaves the device, e.g. "Section 125 CrPC", never document
+     content), shown inline in **Provisions cited**. Skipped automatically
+     whenever a match isn't clear rather than guessing (`src/provision_lookup.py`).
 3. Click any node to open the **evidence drawer** — the verbatim source
    text with page/paragraph and a highlighted exact excerpt, never a
    paraphrase.
