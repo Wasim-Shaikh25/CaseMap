@@ -23,6 +23,8 @@ W.P.(CRL) 793/2017 & CRL.M.As.16639/2017, 8850/2024
 COURT ON ITS OWN MOTION IN
 RE: SUICIDE COMMITTED BY A STUDENT,
 LAW STUDENT OF A UNIVERSITY                    .....Petitioner
+Through: Mr. Test Counsel, Senior Advocate (Amicus Curiae) with
+Mr. Other Counsel, Advs.
 
 versus
 
@@ -73,6 +75,10 @@ def test_narrative_petitioner_becomes_one_party_not_many_fragments():
     all_names = " | ".join(p.name for p in r.parties)
     assert "PROCEEDINGS IN THE WRIT PETITION" not in all_names
     assert "793/2017" not in all_names
+    # A "Through: <counsel>" line ending the block must not be swept into
+    # the party's own name.
+    assert "Test Counsel" not in name
+    assert "Through" not in name
 
 
 def test_ordinary_two_party_caption_is_unaffected():

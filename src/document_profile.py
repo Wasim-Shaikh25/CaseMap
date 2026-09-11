@@ -797,9 +797,15 @@ def extract_parties_narrative_cause_title(text: str, profile: Profile) -> tuple[
         return [], meta
 
     meta["anchor_line"] = anchor
+    # A "Through: <counsel names>" line (same pattern _group_entries() skips
+    # via ADVOCATE_START_RE) ends the party's own text -- stop the join
+    # there rather than sweeping the whole counsel team into the name.
+    party_lines = above[marker_idx:]
+    through_idx = next((i for i, l in enumerate(party_lines)
+                        if ADVOCATE_START_RE.match(l)), len(party_lines))
     # Role markers ("....Petitioner") sit on their own line in the block —
     # drop them rather than fold them into the joined name.
-    name_lines = [l for l in above[marker_idx:] if not STANDALONE_ROLE_RE.match(l)]
+    name_lines = [l for l in party_lines[:through_idx] if not STANDALONE_ROLE_RE.match(l)]
     name = re.sub(r"\s+", " ", " ".join(name_lines)).strip(" .")
     if not name:
         return [], meta
