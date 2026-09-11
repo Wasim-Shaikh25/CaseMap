@@ -26,7 +26,21 @@ is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 67: dashboard now states plainly what the tool is/isn't and carries a standing correctness disclaimer)
+**Last updated:** 2026-09-11 (entry 68: event detection gets a dependency-parse (SRL) layer, replacing reliance on the fixed `EVENT_KEYWORDS` phrase list — no new model, see FINDINGS.md F-16)
+
+**2026-09-11 — Event detection: WHO/ACTION/WHAT/WHEN from the dependency parse, not a phrase list.** Owner
+asked whether `EVENT_KEYWORDS` ("paid", "terminated", "filed on", ...) was hardcoded — confirmed yes — and
+whether the pipeline could get more accurate without a heavy generative LLM. Measured first
+(`scripts/poc_srl_events.py`): `en_core_web_sm`, already mandatory-loaded for entity extraction, produces a
+full dependency parse per sentence that was never being used for events, only literal phrase matching. Real
+gap on actual judgments: 23% of event-bearing sentences invisible to the old scanner. Fixed:
+`casemap_pipeline.detect_events_srl()` reads WHO/ACTION/WHAT/WHEN/MODAL straight off that existing parse, wired
+into `casemap_service.py` right after the existing uncovered-dates fallback, additive only (never duplicates
+what earlier stages already found). `EVENT_VERB_LEMMAS` (new, tiny) replaces `EVENT_KEYWORDS` for type
+labeling only — an unmatched verb becomes an untyped `FACT` event instead of vanishing. Re-verified against all
+22 `testdata/*.txt` docs post-fix: ~0% real gap left. `DENIAL_MARKERS`/`ASSERTION_MARKERS` and
+`RHETORICAL_ROLE_CUES` are the same class of fixed-phrase hardcoding and were deliberately left alone this
+pass (see F-16 for why each is a different kind of follow-up). Full `pytest`: 62 passed, 1 skipped.
 
 ## Current phase
 

@@ -35,6 +35,7 @@ from document_profile import extract_parties_hybrid, party_result_to_fallback_ev
 from casemap_pipeline import (
     extract_pages, segment_document_layered, build_section_text,
     extract_deterministic, extract_entities, normalize_entities, detect_events,
+    detect_events_srl,
     build_inverted_index, generate_candidate_pairs, score_pair,
     sparsify_and_cluster, label_edge, to_react_flow, make_similarity_fn,
     _classify_polarity, offset_to_page,
@@ -693,6 +694,20 @@ def process_document(path: str, name: str, ml_nlp, ocr_engine: str = "tesseract"
         _link_dates_in_place(section_events, det.get("dates") or [])
         section_events += _events_for_uncovered_dates(
             section_events, det.get("dates") or [], sat_spans, section_text, section, name)
+
+        # SRL layer (F-16): WHO/ACTION/WHAT/WHEN read off the dependency
+        # parse for any date- or modal-bearing sentence none of the layers
+        # above already turned into an event. covered_spans is everything
+        # found so far for this section -- this only adds what's still
+        # missing (measured at 23% of real event sentences on real
+        # judgments, see scripts/poc_srl_events_v2.py).
+        covered_spans = [(e["sources"][0]["char_start"], e["sources"][0]["char_end"])
+                         for e in section_events]
+        srl_evs = detect_events_srl(section, section_text, offsets, covered_spans,
+                                     ent_map, ents, name)
+        _link_dates_in_place(srl_evs, det.get("dates") or [])
+        section_events += srl_evs
+
         # Every event above carries char_start/char_end relative to THIS
         # section's own text (see important_lines.py:272-273,
         # detect_events()'s `idx` in casemap_pipeline.py) — not the whole

@@ -855,6 +855,133 @@ def detect_events(section: dict, section_text: str, offsets: list,
     return _dedupe_events(events)
 
 
+# ---------------------------------------------------------------------------
+# STAGE 4b -- SRL-style fact extraction: WHO/ACTION/WHAT/WHEN read directly
+# off en_core_web_sm's own dependency parse and DATE/MODAL tags, no fixed
+# phrase list (FINDINGS.md F-16).
+#
+# EVENT_KEYWORDS above only fires on an exact multi-word phrase ("filed on",
+# "order dated") -- a real event phrased any other way ("Rohitsingh was
+# acquitted...", "the wife left the matrimonial home...") is structurally
+# invisible to it, not just uncommon. scripts/poc_srl_events_v2.py measured
+# this directly against the REAL pipeline (including important_lines.py and
+# casemap_service.py's own _events_for_uncovered_dates() fallback, not just
+# this module in isolation): 23% of real event-bearing sentences on actual
+# judgments were still missing everything above catches.
+#
+# This still only ever SELECTS and LABELS a real sentence -- it never
+# generates one, so it carries the same verbatim guarantee as every other
+# stage here (THESIS.md "judge, not generator").
+#
+# EVENT_VERB_LEMMAS below is deliberately much smaller than EVENT_KEYWORDS
+# even though it covers strictly more surface forms: one LEMMA ("pay")
+# matches every inflection and spacing variant a multi-word phrase list has
+# to enumerate one at a time ("paid", "payment of", "pays", "paying a sum
+# to", ...). A verb not in this map is never dropped -- it becomes type
+# "FACT" (untyped, but still surfaced with its real WHO/WHAT/WHEN) rather
+# than silently vanishing the way an unmatched EVENT_KEYWORDS phrase does.
+EVENT_VERB_LEMMAS = {
+    "pay": "PAYMENT", "remit": "PAYMENT", "transfer": "PAYMENT", "receive": "PAYMENT",
+    "terminate": "TERMINATION", "revoke": "TERMINATION", "rescind": "TERMINATION",
+    "cancel": "TERMINATION",
+    "notify": "NOTICE", "serve": "NOTICE",
+    "execute": "AGREEMENT", "sign": "AGREEMENT", "enter": "AGREEMENT",
+    "order": "ORDER", "direct": "ORDER", "hold": "ORDER", "rule": "ORDER",
+    "file": "FILING", "institute": "FILING", "present": "FILING",
+}
+
+_SRL_SUBJ_DEPS = {"nsubj", "nsubjpass"}
+_SRL_OBJ_DEPS = {"dobj", "attr", "oprd", "dative"}
+
+
+def _srl_root_verb(sent):
+    for tok in sent:
+        if tok.dep_ == "ROOT" and tok.pos_ in ("VERB", "AUX"):
+            return tok
+    return sent.root  # fragment/heading with no verbal root -- best effort
+
+
+def _srl_fields(sent) -> tuple[list[str], str | None, list[str]]:
+    root = _srl_root_verb(sent)
+    who = [tok.text for tok in root.children if tok.dep_ in _SRL_SUBJ_DEPS]
+    what = [tok.text for tok in root.children if tok.dep_ in _SRL_OBJ_DEPS]
+    for child in root.children:
+        if child.dep_ == "prep":
+            what += [gc.text for gc in child.children if gc.dep_ == "pobj"]
+    action = root.lemma_ if root.pos_ in ("VERB", "AUX") else None
+    return who, action, what
+
+
+def detect_events_srl(section: dict, section_text: str, offsets: list,
+                       covered_spans: list[tuple[int, int]],
+                       entity_map: dict, entities: list[dict],
+                       document_id: str) -> list[dict]:
+    """WHO/ACTION/WHAT/WHEN facts for any sentence with a real DATE entity
+    or a modal verb (MD tag: will/would/could/shall/may/should/must) that no
+    earlier stage already turned into an event. `covered_spans` is the
+    caller's accumulated set of (char_start, char_end) from every earlier
+    layer for this section (detect_events()'s keyword hits,
+    important_lines.py, casemap_service.py's uncovered-dates fallback) --
+    this function only adds what's still missing, never duplicates.
+
+    Header/citation furniture (HEADNOTE blocks, "Equivalent citations",
+    cause-title lines) is excluded via _header_exclude_end() -- the same
+    function extract_entities() already uses for the same reason: a
+    dependency parse over "Retrieved: 2026-09-09" produces a grammatically
+    well-formed but meaningless WHO/WHAT, same failure class F-8 documents
+    for generic NER on header text.
+    """
+    global _NLP
+    if _NLP is None:
+        import spacy
+        _NLP = spacy.load("en_core_web_sm")
+
+    header_end = _header_exclude_end(section_text)
+    doc = _NLP(section_text[:900_000])
+    out = []
+    for sent in doc.sents:
+        if sent.start_char < header_end:
+            continue
+        dates = [e for e in sent.ents if e.label_ == "DATE"]
+        modals = [t for t in sent if t.tag_ == "MD"]
+        if not dates and not modals:
+            continue
+        s_start, s_end = sent.start_char, sent.end_char
+        if any(cs <= s_start and s_end <= ce for cs, ce in covered_spans):
+            continue
+
+        who, action, what = _srl_fields(sent)
+        if not who and not what:
+            continue
+
+        near_entity_ids = sorted({
+            entity_map[(e["label"], e["text"].strip())]
+            for e in entities
+            if s_start <= e["span"][0] <= s_end
+            and (e["label"], e["text"].strip()) in entity_map
+        })
+        text = section_text[s_start:s_end].strip()
+
+        out.append({
+            "type": EVENT_VERB_LEMMAS.get(action, "FACT"),
+            "document_id": document_id,
+            "section_label": section["section_label"],
+            "section_text": text,
+            "linked_entities": near_entity_ids,
+            "linked_date": None,    # attached uniformly by _link_dates_in_place
+            "linked_amount": None,
+            "polarity": "NEUTRAL",  # reclassified uniformly by the caller
+            "confidence": "srl_parse",
+            "who": who, "action": action, "what": what,
+            "sources": [{
+                "document": document_id, "page": offset_to_page(s_start, offsets),
+                "char_start": s_start, "char_end": s_end,
+                "text": text, "section": section["section_label"],
+            }],
+        })
+    return out
+
+
 def _dedupe_events(events: list[dict]) -> list[dict]:
     """Several keywords in one paragraph shouldn't become several events."""
     seen, out = set(), []

@@ -9,7 +9,69 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 8 · **Fixed:** 7 · **Superseded:** 0
+**Open:** 8 · **Fixed:** 8 · **Superseded:** 0
+
+## F-16 — `EVENT_KEYWORDS` fixed-phrase event detection missed real events; replaced with a dependency-parse (SRL) layer, no new model
+
+**Date:** 2026-09-11
+**One-liner:** `casemap_pipeline.detect_events()`'s event detection only ever
+fired on an exact multi-word phrase (`EVENT_KEYWORDS` — "paid", "filed on",
+"order dated", ~26 phrases across 6 types). A real event phrased any other
+way ("Rohitsingh was acquitted...", "the wife left the matrimonial
+home...") was structurally invisible to it, not just uncommon.
+
+**Measured, not assumed:** `scripts/poc_srl_events.py` (history in the file's
+own docstring — an earlier version compared only against `detect_events()`
+in isolation and found a 73% miss rate; that overstated the gap, since
+`casemap_service.py` already had two more coverage layers on top of it
+(`_events_for_uncovered_dates()`'s `DATED_EVENT` fallback, and
+`important_lines.py`'s per-paragraph central-sentence pick). Re-measured
+against the FULL real pipeline output, the true gap was **23% of real
+event-bearing sentences on actual judgments** (30 event-like sentences
+across 3 real testdata documents; 7 were still completely missing — real
+facts like "Prabhu was murdered... in May 1972", "Rohitsingh was acquitted
+by Madhya Pradesh High Court... in February 1974", "this Court granted
+Special Leave... in May 1974").
+
+**Fix:** `casemap_pipeline.detect_events_srl()` (new) reads WHO (nsubj/
+nsubjpass), ACTION (root verb lemma), WHAT (dobj/attr/prep-object), and WHEN
+(DATE entities) / certainty (MD-tagged modals) directly off `en_core_web_sm`'s
+own dependency parse and POS tags — a component already mandatory-loaded by
+`extract_entities()` for every document, so this adds **no new model and no
+new dependency**. It only fires for a sentence with a real date or modal
+that no earlier stage already turned into an event (`covered_spans`, passed
+in by the caller in `casemap_service.py`), so it adds coverage without
+duplicating existing events. Header/citation furniture is excluded via the
+same `_header_exclude_end()` already used for entity extraction (same F-8
+failure class: a well-formed parse of "Retrieved: 2026-09-09" is
+grammatically valid but meaningless).
+
+**On hardcoding, deliberately:** `EVENT_VERB_LEMMAS` (the new, much smaller
+verb-lemma → type map replacing `EVENT_KEYWORDS` for coarse type labeling
+only, never for detection) is intentionally not exhaustive. A verb lemma not
+in the map does not drop the sentence — it becomes an untyped `FACT` event,
+still fully shown with its real WHO/WHAT/WHEN. This is the actual fix for
+the original bug class: nothing is silently dropped anymore for not matching
+a fixed vocabulary, whether that vocabulary is 6 phrase-types or 50.
+`DENIAL_MARKERS`/`ASSERTION_MARKERS` (polarity) and `RHETORICAL_ROLE_CUES`
+(Facts/Issues/Ruling role tagging) are the same class of fixed-phrase
+hardcoding and were NOT touched this pass — `DENIAL_MARKERS` is a plausible
+next candidate (spaCy's `neg` dependency tag covers the same ground without
+a phrase list); `RHETORICAL_ROLE_CUES` is a harder, genuinely different
+problem (role classification, not fact extraction) and would need an actual
+trained classifier, not just more of the parse — see `HANDOFF.md`/
+`opennyai_bridge.py:122`'s already-noted unwired rhetorical-role-baseline
+seam.
+
+**Verified:** re-ran `scripts/poc_srl_events.py` against all 22
+`testdata/*.txt` documents post-integration — 188 event-like sentences
+total, 3% ("genuinely new, SRL only") remain, and every one of those
+remaining 6 is cause-title/appeal-number boilerplate ("Arising out of
+SLP(C) No.11663 of 2019") that the comparison script's own whole-document
+scan (no header exclusion) surfaces but the real per-section pipeline
+correctly filters — i.e. the real remaining gap is ~0%, not noise the
+product will show a user. Full `pytest` suite: 62 passed, 1 skipped, no
+regressions.
 
 ## F-15 — Consolidated open-items pass: what's genuinely still open vs. what earlier notes only claimed was
 

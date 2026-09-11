@@ -4,6 +4,42 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (68) — event detection: dependency-parse (SRL) layer replaces reliance on the fixed `EVENT_KEYWORDS` phrase list, no new model
+
+Owner asked whether event detection was hardcoded ("paid"/"terminated"/"filed
+on" — yes, `EVENT_KEYWORDS` in `casemap_pipeline.py`) and whether structured
+who/what/when/modal detection could raise accuracy without a heavy
+generative LLM. `scripts/poc_srl_events.py` proved it: `en_core_web_sm`
+(already mandatory-loaded for entity extraction on every document) already
+produces a full dependency parse and POS tags per sentence — none of that
+was being used for event detection, only literal phrase matching.
+
+1. **`casemap_pipeline.detect_events_srl()` (new).** WHO (nsubj/nsubjpass),
+   ACTION (root verb lemma), WHAT (dobj/attr/prep-object), WHEN (DATE
+   entities), MODAL (MD-tagged will/would/could/shall/may/should/must) read
+   directly off the existing parse. Fires only for a date- or modal-bearing
+   sentence no earlier stage already turned into an event (`covered_spans`,
+   accumulated per-section by the caller) — additive, never duplicates.
+   Header/citation furniture excluded via the same `_header_exclude_end()`
+   entity extraction already uses.
+2. **`EVENT_VERB_LEMMAS` (new, replaces `EVENT_KEYWORDS` for TYPE LABELING
+   only — `EVENT_KEYWORDS` itself is untouched, still used by
+   `detect_events()`'s own keyword-hit scan).** One verb lemma ("pay") covers
+   every inflection/phrasing a multi-word phrase list had to enumerate one at
+   a time. A verb not in the map isn't dropped — it becomes an untyped
+   `FACT` event, still shown with its real WHO/WHAT/WHEN.
+3. **Wired into `casemap_service.py`**'s per-section loop, right after the
+   existing `_events_for_uncovered_dates()` fallback, sharing its
+   `covered_spans` bookkeeping so nothing is double-counted.
+4. **Measured, not assumed** — see `FINDINGS.md` F-16 for the full before/
+   after numbers (23% of real event sentences missing pre-fix on real
+   judgments; ~0% post-fix, re-verified against all 22 `testdata/*.txt`
+   documents). Full `pytest`: 62 passed, 1 skipped, no regressions.
+
+Deliberately NOT touched this pass (same class of fixed-phrase hardcoding,
+flagged in F-16 as open follow-ups): `DENIAL_MARKERS`/`ASSERTION_MARKERS`
+(polarity) and `RHETORICAL_ROLE_CUES` (Facts/Issues/Ruling tagging).
+
 ## 2026-09-11 (67) — dashboard: sharper "what this is" framing + a standing correctness disclaimer
 
 Owner reviewed a counselor-style critique of the tool (verbatim-indexing
