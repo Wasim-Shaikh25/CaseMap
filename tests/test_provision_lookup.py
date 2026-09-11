@@ -96,6 +96,28 @@ def test_year_disambiguates_same_named_acts(monkeypatch):
     assert requested and "companies-act-2013" in requested[0]
 
 
+def test_year_in_citation_differs_from_index_act_year_still_resolves(monkeypatch):
+    """The year in a citation is the year people actually cite (usually
+    enactment); the bundled index's `act_year` field can instead be a
+    commencement/in-force year for the same Act, e.g. real-world CrPC is
+    indexed with act_year 1974 (came into force) even though every filing
+    cites "..., 1973" (enacted). The year-filtered candidate pool must not
+    be trusted blindly -- when it excludes the right Act and the match
+    fails, retry against the full index before giving up.
+    """
+    pl.reset_cache()
+    _patch_index(monkeypatch, acts=[
+        {"id": "crpc", "short_title": "The Code of Criminal Procedure, 1973", "act_year": 1974},
+        {"id": "some-other-1973-act", "short_title": "The Unrelated Act, 1973", "act_year": 1973},
+    ])
+    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _FakeResponse(SECTION_125_OK))
+
+    result = pl.lookup_provision("Section 125", "Code of Criminal Procedure, 1973")
+
+    assert result is not None
+    assert "Order for maintenance" in result["text"]
+
+
 def test_no_act_name_skips_without_any_network_call(monkeypatch):
     """A citation-to-statute tool needs the Act, not just a section number
     -- a bare 'Section 125' with nothing nearby must not guess."""

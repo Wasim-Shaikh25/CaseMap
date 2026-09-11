@@ -490,19 +490,23 @@ const App = {
       wrap.className = "crowd-group";
       wrap.open = true;
       wrap.innerHTML = `<summary>Provisions cited <span class="n">${g.provisions.length}</span></summary>
-        <div class="crowd-body"><div class="prov-row">
-          ${g.provisions.map(p => `<span class="prov-chip" title="${esc(p.documents.join(", "))}">
-              <span class="prov-top">
+        <div class="crowd-body"><div class="prov-grid">
+          ${g.provisions.map(p => `<div class="prov-card" title="${esc(p.documents.join(", "))}">
+              <div class="prov-card-head">
                 <span class="prov-sec">${esc(p.section)}</span>
                 ${p.act ? `<span class="prov-act">${esc(p.act)}</span>`
                         : `<span class="prov-act unnamed">Act not named nearby</span>`}
                 <span class="prov-count">×${p.count}</span>
-              </span>
-              ${p.statute_lookup ? `<div class="statute-lookup">
-                  <p>${esc(p.statute_lookup.text)}</p>
-                  <a href="${esc(p.statute_lookup.source_url)}" target="_blank" rel="noopener">Source: India Code — ${esc(p.statute_lookup.title)}</a>
-                </div>` : ""}
-            </span>`).join("")}
+              </div>
+              <div class="prov-card-body">
+                ${p.statute_lookup ? `
+                  <p class="prov-explain">${esc(p.statute_lookup.text)}</p>
+                  <a class="prov-source" href="${esc(p.statute_lookup.source_url)}" target="_blank" rel="noopener">Source: India Code — ${esc(p.statute_lookup.title)}</a>
+                ` : p.act
+                    ? `<p class="prov-explain prov-explain-missing">No explanation fetched yet — turn on "Look up cited provisions online" before processing to see this section's exact text here.</p>`
+                    : `<p class="prov-explain prov-explain-missing">No Act named near this citation in the source text, so its exact wording can't be looked up.</p>`}
+              </div>
+            </div>`).join("")}
         </div></div>`;
       body.appendChild(wrap);
     }

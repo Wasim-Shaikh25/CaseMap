@@ -16,12 +16,12 @@ def test_code_named_statute_is_found():
 
 def test_bare_ipc_acronym_is_resolved():
     window = "FIR No. 153/2017 registered under Section 306 of the IPC at P.S. Sarojini Nagar"
-    assert _find_act_name(window) == "Indian Penal Code"
+    assert _find_act_name(window) == "Indian Penal Code, 1860"
 
 
 def test_bare_crpc_acronym_is_resolved():
     window = "closure report under Section 173 Cr.P.C. was accepted by the ld. ACJM"
-    assert _find_act_name(window) == "Code of Criminal Procedure"
+    assert _find_act_name(window) == "Code of Criminal Procedure, 1973"
 
 
 def test_act_named_statute_still_works():

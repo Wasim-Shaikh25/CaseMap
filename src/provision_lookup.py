@@ -72,31 +72,46 @@ def _load_acts_index() -> list[dict]:
     return _ACTS_INDEX
 
 
-def _resolve_act_slug(act: str) -> str | None:
-    """Fuzzy-match `act` against the LOCAL bundled index -- no network call.
-    A year found in `act` (most citations from _find_act_name() carry one,
-    e.g. "Prevention of Corruption Act, 1988") narrows the candidate pool
-    first, since Act names repeat across different years far more than
-    within one; only the year-filtered pool is fuzzy-matched when that
-    narrowing found anything. Returns the act's `id` (the slug the section
-    endpoint needs), or None if nothing matches confidently enough."""
-    if not act:
-        return None
-    acts = _load_acts_index()
-    query = _LEADING_THE_RE.sub("", act).strip().rstrip(".")
-    year_m = _YEAR_RE.search(query)
-    candidates = acts
-    if year_m:
-        year_filtered = [a for a in acts if a.get("act_year") == int(year_m.group(1))]
-        if year_filtered:
-            candidates = year_filtered
+def _best_match(query: str, candidates: list[dict]) -> tuple[dict, float] | None:
     if not candidates:
         return None
     best = process.extractOne(
         query, [a["short_title"] for a in candidates], scorer=fuzz.token_set_ratio)
     if not best or best[1] < MATCH_THRESHOLD:
         return None
-    return candidates[best[2]]["id"]
+    return candidates[best[2]], best[1]
+
+
+def _resolve_act_slug(act: str) -> str | None:
+    """Fuzzy-match `act` against the LOCAL bundled index -- no network call.
+    A year found in `act` (most citations from _find_act_name() carry one,
+    e.g. "Prevention of Corruption Act, 1988") narrows the candidate pool
+    first, since Act names repeat across different years far more than
+    within one; the year-filtered pool is tried first when that narrowing
+    found anything.
+
+    The year in a citation is the year most people cite (usually
+    enactment), which is not always the index's `act_year` field (which can
+    be a commencement/in-force year instead) -- e.g. the Code of Criminal
+    Procedure is universally cited as "..., 1973" but this index's
+    `act_year` for it is 1974, the year it came into force. So the
+    year-filtered pool is a precision optimization, not a guarantee: if it
+    fails to clear the confidence threshold, retry against the FULL index
+    before giving up, rather than trusting a possibly-wrong year field to
+    exclude the right Act. Returns the act's `id` (the slug the section
+    endpoint needs), or None if nothing matches confidently enough."""
+    if not act:
+        return None
+    acts = _load_acts_index()
+    query = _LEADING_THE_RE.sub("", act).strip().rstrip(".")
+    year_m = _YEAR_RE.search(query)
+    if year_m:
+        year_filtered = [a for a in acts if a.get("act_year") == int(year_m.group(1))]
+        match = _best_match(query, year_filtered)
+        if match:
+            return match[0]["id"]
+    match = _best_match(query, acts)
+    return match[0]["id"] if match else None
 
 
 def reset_cache() -> None:

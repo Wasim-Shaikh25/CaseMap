@@ -66,10 +66,16 @@ _TIGHT_CODE_RE = re.compile(r"([A-Z][\w&/,.\-]*(?:\s+[A-Z][\w&/,.\-]*){0,4}\s+Co
 # capitalization guard _find_act_name applies to prose "Act"/"Code" hits.
 _ACT_ACRONYM_RE = re.compile(r"\b(IPC|Cr\.?\s?P\.?\s?C\.?|C\.?P\.?C\.?|IEA)\b")
 _ACT_ACRONYMS = {
-    "IPC": "Indian Penal Code",
-    "CRPC": "Code of Criminal Procedure",
-    "CPC": "Code of Civil Procedure",
-    "IEA": "Indian Evidence Act",
+    # Year included even though citations often omit it: bare, year-less
+    # names like "Code of Civil Procedure" score too close against several
+    # unrelated Acts in the statute-text lookup's fuzzy index (one real case:
+    # it matched a 1965 Goa-specific act at 100% confidence) -- the year
+    # disambiguates correctly and also matches how these statutes are
+    # properly cited.
+    "IPC": "Indian Penal Code, 1860",
+    "CRPC": "Code of Criminal Procedure, 1973",
+    "CPC": "Code of Civil Procedure, 1908",
+    "IEA": "Indian Evidence Act, 1872",
 }
 
 EMBED_MODEL = "all-MiniLM-L6-v2"

@@ -6,6 +6,12 @@
       "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": ["-m", "uvicorn", "server.app:app", "--port", "8756"],
       "port": 8756
+    },
+    {
+      "name": "ui-static-preview",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8790", "--directory", "ui"],
+      "port": 8790
     }
   ]
 }
