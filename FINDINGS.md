@@ -82,6 +82,34 @@ tier/party-count per document, no regression. Full suite: 75 passed (was 66).
 known, minor, not-yet-chased gap — flag if it recurs on a real document with
 a clear, safe generalization.
 
+**Addendum (same day) — tried a 3rd GLiNER label for the residual noise,
+rejected: it regressed the fix just shipped above, and a follow-up attempt
+was worse.** Owner asked whether an existing layer/model could clean up the
+remaining address-fragment noise. Tried adding a third, negative zero-shot
+label ("address, place name, or geographic location") to `_judge_party_name()`
+so an address-labelled span could be excluded from the keep-coverage sum.
+Tested directly against the real NGT appeal fragments: it DID fix one case
+("Khashewadi, Tiroda", address+person split, now correctly rejected) — but
+zero-shot label predictions are not independent per label. Adding the third
+label changed the SAME model's span choice on "N. RAM" (no relation to
+addresses at all), shrinking its matched span from the full 6/6 characters
+down to 3/6 ("RAM" only) — enough to drop the fix shipped earlier in this
+same entry. Caught immediately by `tests/test_gliner_party_judge_suffix.py`
+(2 of 4 tests failed). A follow-up attempt — a SEPARATE single-label call
+just for the address signal, to avoid the label-competition effect — was
+worse: with no other label to compete against, GLiNER tagged "address" on
+almost everything tested at full coverage, including "The Sarpanch" and
+"The District Collector" (both real parties). Reverted both attempts;
+`casemap_service.py` is back to the single-label-set version this entry
+originally shipped. Remaining noise ("Grampanchayat Tiroda" — real
+government-body vocabulary, GLiNER's org label isn't wrong; "Sindhunagri,
+Oras" — a transliterated place name GLiNER mistakes for a person) is not an
+entity-typing problem this judge can resolve; it's a document-structure
+problem (is this line a continuation of the entry above it, or a new one)
+that belongs in `document_profile.py`'s entry-grouping logic, not the
+judge. Not pursued further this session — flagged for whoever picks this
+up next, with the two concrete example strings above to test against.
+
 ## F-21 — Docling layout layer removed: never active in the deployed app, fully redundant with the project's own OCR, and its one unique capability never showed a downstream accuracy gain
 
 **Date:** 2026-09-11

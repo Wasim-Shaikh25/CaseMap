@@ -117,6 +117,24 @@ def _sat_sentence_spans(text: str) -> list[tuple[int, int]] | None:
 
 _GLINER_MODEL = "_unloaded"
 _PARTY_LABELS = ["person name", "organization, company, or government body name"]
+# TRIED 2026-09-11 (F-22 addendum) and REJECTED: adding a third "address,
+# place name, or geographic location" label to catch address-continuation
+# fragments that leak through as fake parties ("Khashewadi, Tiroda",
+# "Grampanchayat Tiroda" on a real NGT appeal caption). It did catch one
+# real case -- but zero-shot label sets are not independent: adding that
+# third label changed this SAME model's span/label choice on text having
+# nothing to do with addresses, silently shrinking "N. RAM" (a real
+# petitioner, just fixed above) from a full 6/6-char match down to a 3/6
+# partial ("RAM" only), enough to drop it below the keep threshold again.
+# A second, single-label-only call to isolate the address signal was tried
+# too and was worse: with no other label to compete against, GLiNER tagged
+# "address" on almost everything tested, including "The Sarpanch" and "The
+# District Collector" at full coverage. Both a real regression on a
+# just-fixed case and a promiscuous single-label signal -- not shipped.
+# The remaining address-fragment noise stays a known residual (fix it
+# structurally in document_profile.py's entry continuation logic, not by
+# asking this judge to type every fragment) rather than trade one real bug
+# for another.
 
 
 def _get_gliner_model():
