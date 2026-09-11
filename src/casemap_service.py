@@ -659,14 +659,22 @@ def _find_act_name(window: str) -> str | None:
     the tight, already-clean citation strings it was written for ("Section 7
     of the Advocates Act, 1961"), but scanning open prose with it surfaces
     false positives: "no fact", "disciplinary act", "in charact[er]" all
-    match "act" as a case-insensitive substring. Rather than change the
-    shared regex (other callers rely on its current behavior on short
-    strings, where this doesn't come up), require the literal capitalized
-    word "Act"/"Code" in what it found before trusting it — real statute
-    names are always capitalized in these documents; ordinary prose using
-    the word "act" is not."""
-    m = _ACT_IN_SPAN.search(window)
-    if m:
+    match "act" as a case-insensitive substring. It also readily matches an
+    entirely lowercase clause that merely ENDS in the literal word "Act" --
+    e.g. a judgment quoting a statute's own text verbatim ("...recognised
+    for the purpose of admission as an advocate under this Act") right next
+    to the real citation. Rather than change the shared regex (other callers
+    rely on its current behavior on short strings, where this doesn't come
+    up), every match is required to contain a real, capitalized Act/Code
+    name (_TIGHT_ACT_RE / _TIGHT_CODE_RE) before being trusted; a match that
+    fails that check is skipped, not returned as-is, and the next candidate
+    span in the window (there can be several -- a quoted clause AND the real
+    citation often both appear) is tried instead. A window with no
+    capitalized Act/Code name anywhere in it (e.g. only an anaphoric "the
+    Act of 1961", too ambiguous to resolve to a specific statute from local
+    context alone) correctly yields no match at all -- an honest skip is
+    better than a guess built from the wrong span."""
+    for m in _ACT_IN_SPAN.finditer(window):
         candidate = re.sub(r"\s+", " ", m.group("act")).strip()
         if len(candidate) <= 120 and re.search(r"\bAct\b", candidate):
             # _ACT_IN_SPAN's own non-greedy match can still walk back through
@@ -676,16 +684,17 @@ def _find_act_name(window: str) -> str | None:
             # before "Act" so the UI shows "Advocates Act" rather than the
             # whole clause.
             tight = _TIGHT_ACT_RE.search(candidate)
-            return tight.group(1) if tight else candidate
+            if tight:
+                return tight.group(1)
 
     # Same idea, for statutes named "...Code" rather than "...Act" (Indian
     # Penal Code, Code of Criminal Procedure) — see _CODE_IN_SPAN docstring.
-    m = _CODE_IN_SPAN.search(window)
-    if m:
+    for m in _CODE_IN_SPAN.finditer(window):
         candidate = re.sub(r"\s+", " ", m.group("code")).strip()
         if len(candidate) <= 120 and re.search(r"\bCode\b", candidate):
             tight = _TIGHT_CODE_RE.search(candidate)
-            return tight.group(1) if tight else candidate
+            if tight:
+                return tight.group(1)
 
     # Bare acronym ("Section 306 IPC", "Section 173 Cr.P.C.") -- neither
     # regex above fires since there's no prose Act/Code name to find.
