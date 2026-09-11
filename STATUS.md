@@ -27,7 +27,21 @@ not re-add it without re-reading `FINDINGS.md` F-21 first; `real_pdfs/` exists (
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 76: real fetched docs surfaced and fixed 2 party-extraction bugs — BETWEEN/AND tribunal captions, GLiNER "& Ors." false negative, see FINDINGS.md F-22)
+**Last updated:** 2026-09-11 (entry 77: structural fix for F-22's residual address-fragment noise, plus a real GLiNER "State of Maharashtra" gap, see FINDINGS.md F-23)
+
+**2026-09-11 — Structural fix for F-22's residual party-extraction noise; found and fixed a real GLiNER gap on
+"State of Maharashtra" along the way.** Owner asked to fix the address-fragment noise ("Grampanchayat Tiroda",
+"Sindhunagri, Oras") that F-22's addendum traced to a document-structure problem after a GLiNER-label attempt was
+rejected. Fixed in `document_profile._group_entries()`: once inside a NUMBERED party entry, an unmatched line now
+defaults to "continuation of this entry" instead of "new party" — gated so the common unnumbered VERSUS caption is
+unaffected. Fixed all 3 of F-22's residual strings in one change (better than the rejected GLiNER attempt, which
+only fixed 1 of 3). Surfaced two more real bugs along the way: a page-break line mid-entry was wrongly resetting the
+entry (split into its own transparent-skip pattern), and — once the structural fix let a real "State of Maharashtra"
+respondent through cleanly — the already-shipped GLiNER judge turned out to drop it anyway (zero entities, while
+"State of U.P." judges fine) — a genuine, previously-invisible gap on the single most common Indian-litigation
+respondent pattern, fixed with a deterministic regex bypass ahead of the model call. 6 new tests; full 22-doc sweep:
+21/22 identical, 1 doc improved (10 -> 7 parties, verified as pure noise removal, not a regression). Full suite: 81
+passed. Full writeup: `FINDINGS.md` F-23.
 
 **2026-09-11 — Real fetched documents (writ petition, NGT appeal, affidavit, agreements) surfaced 2 party-extraction
 bugs, both fixed.** Owner asked to fetch real public documents outside `testdata/` and see how the pipeline performs.

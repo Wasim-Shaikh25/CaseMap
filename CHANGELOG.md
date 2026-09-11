@@ -4,6 +4,36 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (77) — structural fix for F-22's residual address-fragment noise, plus a real GLiNER gap on "State of Maharashtra"
+
+Owner asked to fix the residual party-extraction noise F-22's addendum
+identified as a document-structure problem after a GLiNER-label attempt was
+rejected there. Full writeup: `FINDINGS.md` F-23.
+
+1. **`document_profile._group_entries()`**: once inside a NUMBERED party
+   entry, a line now defaults to "continuation of this entry" instead of
+   "new party" unless it's itself a new numbered entry. Gated on the
+   current entry actually being numbered, so the unnumbered 2-party VERSUS
+   caption (the common case) is unaffected. Fixed all 3 of F-22's residual
+   noise strings in one structural change.
+2. `Page N of M` page-break lines split out of `_is_caption_furniture_line`
+   into their own `_PAGE_BREAK_RE`, handled as a transparent skip instead
+   of resetting the current entry.
+3. **`casemap_service._judge_party_name()`**: GLiNER returns zero entities
+   for "State of Maharashtra"/"State of Madhya Pradesh" (but judges "State
+   of U.P." fine) — a genuine, previously-invisible false negative on the
+   single most common Indian-litigation respondent pattern, unrelated to
+   F-22. Given a small zero-shot model's demonstrated per-state
+   inconsistency, added a deterministic regex bypass (`_GOVT_LITIGANT_RE`)
+   for "State of X"/"Union of India"/"Government of X" ahead of the model
+   call.
+
+6 new tests. Full 22-doc `testdata/` sweep: 21/22 docs identical to the
+F-22 baseline; doc09 went from 10 to 7 parties, verified by hand as pure
+noise removal (address fragments that had been wrongly split off Bank of
+Baroda/Sunil Kumar Gupta's own entries), not a regression. Full suite: 81
+passed (was 75).
+
 ## 2026-09-11 (76) — real fetched affidavits/agreements/petitions surfaced 2 party-extraction bugs; both fixed and tested
 
 Owner asked to fetch real public documents outside `testdata/` and see how

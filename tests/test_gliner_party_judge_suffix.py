@@ -48,3 +48,22 @@ def test_known_furniture_is_still_rejected():
     judge = _judge()
     assert judge("LIST OF DATES") is False
     assert judge("SYNOPSIS") is False
+
+
+# "State of <State>" is a deterministic bypass (no model call at all -- see
+# _GOVT_LITIGANT_RE), so these run unconditionally, not gated by _judge().
+def test_state_of_x_is_a_deterministic_keep():
+    """Found on a real NGT appeal (2026-09-11, F-22/F-23): GLiNER returns
+    ZERO entities for "State of Maharashtra"/"State of Madhya Pradesh" even
+    though "State of U.P." (the same pattern, abbreviated) judges fine --
+    erratic enough on this one templated, unambiguous pattern that it gets a
+    deterministic bypass instead."""
+    assert service._judge_party_name("State of Maharashtra") is True
+    assert service._judge_party_name("State of Madhya Pradesh") is True
+    assert service._judge_party_name("Union of India") is True
+    assert service._judge_party_name("Government of NCT of Delhi") is True
+
+
+def test_state_of_x_bypass_does_not_swallow_furniture():
+    judge = _judge()
+    assert judge("LIST OF DATES") is False

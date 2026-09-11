@@ -9,7 +9,72 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 6 · **Fixed:** 14 · **Superseded:** 0
+**Open:** 6 · **Fixed:** 15 · **Superseded:** 0
+
+## F-23 — Structural fix for F-22's residual address-fragment noise (rejected there): numbered party blocks now default to "continuation," not "new party"; plus a genuine GLiNER gap on "State of Maharashtra"
+
+**Date:** 2026-09-11
+**One-liner:** Owner asked to fix the residual noise F-22's addendum
+identified as a document-structure problem, not a model-judging problem.
+Fixed at the structural layer as recommended there.
+
+**Root cause:** `document_profile._group_entries()` only attaches a line to
+the CURRENT party entry when it POSITIVELY matches a known continuation
+pattern (address keyword, description phrase, noise phrase, ...). Anything
+that doesn't match falls through to the opposite default — "does this look
+like a name on its own?" — and becomes a brand-new party. Real multi-line
+addresses inside a numbered caption entry ("1. The Sarpanch,\n Grampanchayat
+Tiroda,\n Tal. Sawantwadi,\n District Sindhudurg,\n Maharashtra") have no
+dedicated regex for most of their lines, so several of them were quietly
+promoted into fake parties.
+
+**Fix:** once inside a NUMBERED entry specifically (`cur["ordinal"] is not
+None`), flip the default — a line is a continuation of the current entry
+unless it is itself a new numbered entry (`_NUMBERED_PARTY_RE`). Gated on
+the current entry actually being numbered, so the far more common unnumbered
+2-party VERSUS caption (name / VERSUS / name, no numbering at all) is
+completely unaffected — confirmed by the full 22-doc sweep below. This alone
+fixed all 3 of F-22's original residual noise strings ("Grampanchayat
+Tiroda", "Khashewadi, Tiroda", "Sindhunagri, Oras") — a genuine improvement
+over the rejected GLiNER-label attempt in F-22's addendum, which only ever
+fixed 1 of the 3 and broke something else doing it.
+
+**Two bugs this surfaced along the way, both fixed too:**
+1. A `Page N of M` PDF page-break line landing mid-entry was being treated
+   as caption furniture, which resets the current entry (`cur = None`) —
+   correct for real furniture (`Author:`, `Bench:`, ...) but wrong for a
+   layout artifact, since it orphaned every line after it from its real
+   entry. Split into its own `_PAGE_BREAK_RE`, handled as a transparent skip
+   (in `_group_entries` AND both `_block_bounds_above`/`_block_bounds_below`)
+   instead of folding it into `_is_caption_furniture_line`.
+2. Once the structural fix let `extract_parties()` correctly produce "State
+   of Maharashtra" as its own numbered respondent (entry 3, `... 3. State of
+   Maharashtra, Through the Chief Secretary, ...`), the ALREADY-SHIPPED
+   GLiNER judge (`casemap_service._judge_party_name()`) turned out to drop
+   it anyway — a genuine, previously-invisible false negative, unrelated to
+   F-22's fixes. Confirmed directly: GLiNER returns zero entities for "State
+   of Maharashtra" and "State of Madhya Pradesh," but judges "State of
+   U.P." (textually the same pattern, abbreviated) fine. "State of
+   \<State\>"/"Union of India"/"Government of \<Place\>" is arguably the
+   single most common respondent pattern in Indian litigation, so rather
+   than chase the model's inconsistency state-by-state, it gets a
+   deterministic regex bypass (`_GOVT_LITIGANT_RE`) ahead of the model call
+   entirely — in the spirit of this codebase's existing preference for
+   regex over ML wherever a pattern is this templated and unambiguous
+   (`CASE_TYPE_ROLES`, `FORUM_RE`, etc.).
+
+**Evidence:** `tests/test_numbered_party_block_continuation.py` (3 tests,
+mirrors real `testdata/09_...` structure), `tests/test_between_and_caption.py`
+(+1 test), `tests/test_gliner_party_judge_suffix.py` (+2 tests). Full 22-doc
+`testdata/` sweep re-run directly: 21 of 22 docs identical tier/party-count
+to the F-22 baseline; the 22nd (`09_insolvency_..._singhania_v_bank_of_baroda.txt`)
+went from 10 parties to 7 — verified by hand that all 3 removed entries were
+genuine address-fragment noise (`Through Its Senior Manager`, `Zonal
+Stressed Assets Recovery Branch`, `Located At: 4th Floor...`) that had been
+wrongly split off `Bank of Baroda`/`Sunil Kumar Gupta`'s own numbered
+entries — a real, unprompted improvement on an existing corpus document, not
+a regression. Full suite: 81 passed (was 75).
+**Status:** Fixed.
 
 ## F-22 — Fetched real affidavits/agreements/petitions never seen before; found and fixed 2 real party-extraction misses (BETWEEN...AND tribunal captions, a GLiNER false-negative on "& Ors.")
 

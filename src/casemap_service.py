@@ -170,6 +170,21 @@ def _get_gliner_model():
 # co-parties exist).
 _ORS_SUFFIX_RE = re.compile(r"\s*(?:&|and)\s*(?:ors?|anrs?|others?)\.?\s*$", re.I)
 
+# "State of <State>"/"Union of India"/"Government of <Place>" are the single
+# most common respondent pattern in Indian litigation -- and, found while
+# fixing the NGT appeal above (2026-09-11, F-22/F-23), GLiNER is erratic on
+# it: "State of U.P." judges fine (0.41, full coverage) but "State of
+# Maharashtra" and "State of Madhya Pradesh" -- textually the SAME
+# pattern, just an unabbreviated state name -- return ZERO entities. Given
+# how templated and unambiguous this specific pattern is, and that a small
+# zero-shot model's inconsistency here would otherwise be re-discovered
+# state-by-state, it gets a deterministic bypass instead of relying on the
+# model to eventually get it right.
+_GOVT_LITIGANT_RE = re.compile(
+    r"^\s*(?:the\s+)?(?:state\s+of\s+[A-Z][A-Za-z.\s]{2,40}|"
+    r"union\s+of\s+india|union\s+government|central\s+government|"
+    r"state\s+government|government\s+of\s+[A-Z][A-Za-z.\s]{2,40})\s*$", re.I)
+
 
 def _judge_party_name(name: str) -> bool:
     """True if the party judge thinks `name` is plausibly a real person/org
@@ -177,10 +192,12 @@ def _judge_party_name(name: str) -> bool:
     stray phrase, a form field). If the judge is unavailable, default to
     keeping the name (fail open — no judge means no additional filtering,
     not silent data loss)."""
+    judge_name = _ORS_SUFFIX_RE.sub("", name).strip() or name
+    if _GOVT_LITIGANT_RE.match(judge_name):
+        return True
     model = _get_gliner_model()
     if model is None:
         return True
-    judge_name = _ORS_SUFFIX_RE.sub("", name).strip() or name
     try:
         ents = model.predict_entities(judge_name, _PARTY_LABELS, threshold=0.3)
     except Exception:

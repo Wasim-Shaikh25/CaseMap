@@ -73,6 +73,16 @@ def test_between_and_caption_finds_both_sides():
     assert "maharashtra state pollution control board" in joined
 
 
+def test_between_and_caption_address_lines_do_not_become_fake_parties():
+    """Address-continuation lines inside a NUMBERED entry ("Grampanchayat
+    Tiroda," right after "1. The Sarpanch,") must attach to that entry, not
+    become their own party. Real miss on the NGT appeal (2026-09-11,
+    F-22/F-23) before the numbered-block continuation default was added."""
+    r = extract_parties_layered(NGT_CAPTION, "ngt_appeal.txt")
+    names = [p.name.casefold() for p in r.parties]
+    assert not any(n == "grampanchayat tiroda" for n in names)
+
+
 def test_between_and_caption_roles_from_case_type():
     r = extract_parties_layered(NGT_CAPTION, "ngt_appeal.txt")
     roles = dict(_names_roles(r))

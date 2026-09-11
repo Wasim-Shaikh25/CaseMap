@@ -275,10 +275,18 @@ STANDALONE_ROLE_RE = re.compile(
 # indiankanoon caption furniture (same family as casemap_pipeline._FURNITURE_LINE_RE).
 # `Author:` not `^author\b` — that would drop "Authorised Officer" as a party.
 _CAPTION_FURNITURE_RE = re.compile(
-    r"^(equivalent citations\b|author\s*:|bench\s*:|reportable\b|source:|"
-    r"page\s+\d+\s+of\s+\d+\s*$)", re.I)
+    r"^(equivalent citations\b|author\s*:|bench\s*:|reportable\b|source:)", re.I)
 _CAPTION_SECTION_RE = re.compile(
     r"^(citation|citator info|date of judgment|act)\s*:?\s*$", re.I)
+
+# A PDF page-break line landing mid-block is a layout artifact, not a
+# boundary -- unlike _CAPTION_FURNITURE_RE (below), it must NOT close/reset
+# whatever party entry is currently being built. Found on a real NGT appeal
+# (2026-09-11, F-22/F-23): a "Page 2 of 43" line lands in the MIDDLE of a
+# 3-line address ("Khashewadi, Tiroda," / [page break] / "Tal. Sawantwadi,").
+# Treating it as furniture (which resets cur=None) orphaned everything after
+# it, turning real address continuations into fake new parties again.
+_PAGE_BREAK_RE = re.compile(r"^page\s+\d+\s+of\s+\d+\s*$", re.I)
 
 
 def _is_caption_furniture_line(s: str) -> bool:
@@ -524,6 +532,8 @@ def _block_bounds_above(lines: list[str], anchor: int, max_span: int = 20) -> in
                 break
             continue
         blanks = 0
+        if _PAGE_BREAK_RE.match(s):
+            continue
         if _is_caption_furniture_line(s) or _is_caption_section_label(s):
             break
         if (TITLE_TOP_RE.match(s) or CASE_NUMBER_RE.search(s)
@@ -546,6 +556,8 @@ def _block_bounds_below(lines: list[str], anchor: int, max_span: int = 24) -> in
                 break
             continue
         blanks = 0
+        if _PAGE_BREAK_RE.match(s):
+            continue
         if (_is_caption_section_label(s) or _is_caption_furniture_line(s)
                 or BODY_START_RE.match(s) or _is_body_paragraph(s)):
             break
@@ -571,6 +583,8 @@ def _group_entries(lines: list[str], lo: int, hi: int) -> list[dict]:
             cur = None            # blank line closes the current entry
             in_advocate_block = False
             continue
+        if _PAGE_BREAK_RE.match(s):
+            continue              # layout artifact -- cur stays open
         if _is_caption_furniture_line(s) or _is_caption_section_label(s):
             cur = None
             continue
@@ -607,6 +621,26 @@ def _group_entries(lines: list[str], lo: int, hi: int) -> list[dict]:
         if _DESC_LINE_RE.match(s) or _NOISE_LINE_RE.match(s):
             if cur:
                 cur["desc"].append(s)
+            continue
+        if cur is not None and cur.get("ordinal") is not None and not _NUMBERED_PARTY_RE.match(s):
+            # Inside a NUMBERED multi-line party entry -- e.g. a tribunal
+            # "BETWEEN: 1. Name,\n  Address line,\n  Address line,\n\n2. Name,
+            # ..." block. Found on a real filed NGT appeal (2026-09-11,
+            # F-22/F-23): every line above this one only attaches to `cur`
+            # if it POSITIVELY matches a known continuation pattern (address,
+            # description, noise, ...) -- anything that doesn't gets the
+            # OPPOSITE default, "does this look like a name?", which quietly
+            # waves through plain address fragments with no dedicated regex
+            # ("Grampanchayat Tiroda", "Khashewadi, Tiroda", "Sindhunagri,
+            # Oras") as brand-new fake parties. Once we know we're inside a
+            # numbered entry specifically, flip the default: a line is a
+            # continuation of THIS entry unless it's itself a new numbered
+            # one. Gated on `ordinal is not None` so the far more common
+            # unnumbered 2-party VERSUS caption (name / VERSUS / name, no
+            # numbering at all) is completely unaffected -- there `cur`
+            # never carries an ordinal, so this branch never fires and the
+            # existing name-detection default still applies.
+            cur["desc"].append(s)
             continue
         name, role, ordinal = _clean_party_name(s)
         if not _looks_like_party_name(name):
