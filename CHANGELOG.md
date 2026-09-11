@@ -4,6 +4,29 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (67) — dashboard: sharper "what this is" framing + a standing correctness disclaimer
+
+Owner reviewed a counselor-style critique of the tool (verbatim-indexing
+assistant, not a legal-AI tool; no independent legal validation; date/OCR
+misses possible; English-only) and asked for the same framing and an
+explicit correctness warning to go on the dashboard itself, not just in
+conversation.
+
+1. **`ui/index.html`'s intro paragraph sharpened.** Now states directly that
+   CaseMap is "a verbatim document-indexing assistant, not a legal-research
+   or drafting tool" and that it "doesn't summarize, paraphrase, generate, or
+   reason about your case" — setting the right expectation up front instead
+   of only implying it.
+2. **New standing correctness notice** on the dashboard (not dismissible —
+   this is a permanent fact about the tool, not a one-time tip): extraction
+   can miss or misread a fact, especially on poor-quality scans, non-English
+   text, or unusual formatting; it never checks whether a cited provision is
+   still good law; every date/amount/citation is a first pass to verify
+   against the original document, not a second opinion. New `.correctness-
+   notice` style in `ui/styles.css` (uses the existing `--warn`/`--warn-soft`
+   tokens already in the palette, left-border accent, both themes checked
+   live in the browser).
+
 ## 2026-09-11 (66) — one-command setup+run script; README fully detailed; open-items pass across HANDOFF/FINDINGS/TRACKER
 
 Owner asked for all open items/findings to be marked down with proper

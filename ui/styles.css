@@ -177,6 +177,15 @@ h2{font-family:var(--serif);font-size:18px;margin:0 0 10px}
 .party-warning{background:var(--warn-soft);color:var(--warn);border-radius:8px;
   padding:9px 12px;font-size:12.5px;line-height:1.5;margin:6px 0 12px}
 
+/* dashboard correctness disclaimer — deliberately not dismissible: this is a
+   standing fact about the tool, not a one-time tip */
+.correctness-notice{display:flex;gap:10px;align-items:flex-start;max-width:640px;
+  background:var(--warn-soft);border-left:3px solid var(--warn);border-radius:6px;
+  padding:10px 14px;margin:4px 0 16px}
+.correctness-notice .glyph{font-size:15px;line-height:1.5;flex-shrink:0}
+.correctness-notice p{margin:0;font-size:12.5px;line-height:1.55;color:var(--ink)}
+.correctness-notice strong{color:var(--warn)}
+
 /* document tree */
 .doc-insight{display:grid;grid-template-columns:repeat(6,1fr);gap:0;
   border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);

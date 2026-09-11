@@ -26,7 +26,7 @@ is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 66: one-command run.ps1 setup+launch script added; README fully detailed; FINDINGS.md F-15 consolidates all genuinely-open items project-wide)
+**Last updated:** 2026-09-11 (entry 67: dashboard now states plainly what the tool is/isn't and carries a standing correctness disclaimer)
 
 ## Current phase
 
@@ -256,3 +256,14 @@ genuinely still open project-wide (Qwen3-Embedding adoption decision; Docling
 not installed in this `.venv`; `important_lines.py` needs a second real
 petition) versus what several docs still called open but code already
 resolved. See `CHANGELOG.md` entry 66.
+
+**2026-09-11 (dashboard honesty pass) — the app now says plainly what it is
+and carries a standing correctness warning.** The dashboard intro now states
+directly that CaseMap is "a verbatim document-indexing assistant, not a
+legal-research or drafting tool" that "doesn't summarize, paraphrase,
+generate, or reason about your case." A new, non-dismissible correctness
+notice sits right below it: extraction can miss or misread a fact (poor
+scans, non-English text, unusual formatting), never checks whether a cited
+provision is still good law, and every date/amount/citation is a first pass
+to verify, not a second opinion. Verified live in the browser, both themes.
+See `CHANGELOG.md` entry 67.
