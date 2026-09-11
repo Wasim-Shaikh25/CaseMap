@@ -716,6 +716,10 @@ const App = {
         ol{padding-left:20px}
         li{margin-bottom:7px;page-break-inside:avoid}
         p.quoted{margin:0 0 10px;padding-left:12px;border-left:2px solid #d8cfb8;page-break-inside:avoid}
+        .statute-lookup{margin:6px 0 4px;padding:8px 12px;border-left:3px solid #8a5a2b;
+          background:#f6efe0;border-radius:0 4px 4px 0;page-break-inside:avoid}
+        .statute-lookup p{margin:0 0 4px;font-size:10.5pt;line-height:1.5}
+        .statute-lookup a{font-size:9pt;color:#7a7469;text-align:left;display:block}
         .doc-section{page-break-inside:avoid-page}
         .reportfoot{margin-top:36px;padding-top:14px;border-top:1px solid #d8cfb8;
           text-align:center;font-size:9.5pt;color:#8a8a8a}

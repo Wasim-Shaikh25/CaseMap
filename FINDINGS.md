@@ -108,6 +108,33 @@ passed (same count as before — 8 old tests replaced by 10 new ones).
 finding's own text is left as historical record per this register's
 append-only convention.
 
+**Addendum (same day) — the counsel-report PDF rendered the new statute
+text unstyled; fixed.** Owner asked to check the "Download counsel report
+(PDF)" output (`ui/app.js`'s `downloadReport()`, which opens a
+self-contained HTML document in a new window and calls the browser's native
+`print()` — no server-side PDF library) before calling this session done.
+Found: the report's `<style>` block is fully self-contained (the print
+window never loads `ui/styles.css`), and the new `.statute-lookup` markup
+added for F-24's India Code text was only ever styled in `ui/styles.css` —
+the print report rendered the exact verbatim statute text as plain,
+undifferentiated body paragraph text with no visual separation from the
+surrounding list, a real formatting regression introduced by F-24 that
+nothing had caught yet. Verified directly: captured the actual HTML string
+`downloadReport()` builds (monkey-patched `window.open` in a live browser
+session to intercept it rather than guessing from source), confirmed
+`.statute-lookup` was absent from the embedded stylesheet, rendered the
+captured HTML to check. Fixed by adding matching `.statute-lookup` rules
+(accent left-border, tinted background, `page-break-inside:avoid`) to the
+report's own embedded `<style>` block in `ui/app.js` — re-verified the same
+way afterward, box now renders correctly. This report has no automated
+test coverage (it is pure client-side HTML string assembly with no server
+round-trip); caught only by rendering the actual output, which is the only
+verification this specific code path allows short of a browser-based test
+harness this project doesn't have.
+**Evidence:** direct capture and render of the real `downloadReport()`
+output before and after, both via a live server + real browser session.
+**Status:** Fixed.
+
 ## F-23 — Structural fix for F-22's residual address-fragment noise (rejected there): numbered party blocks now default to "continuation," not "new party"; plus a genuine GLiNER gap on "State of Maharashtra"
 
 **Date:** 2026-09-11

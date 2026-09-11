@@ -4,6 +4,18 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (79) — counsel-report PDF: fixed statute text rendering unstyled (F-24 regression, same day)
+
+Owner asked to verify the "Download counsel report (PDF)" output before
+calling this session done. It's `window.print()` on a self-contained HTML
+document `ui/app.js` builds — no server-side PDF library, no `ui/styles.css`
+loaded. Found: (78)'s new `.statute-lookup` markup was only ever styled in
+`ui/styles.css`, so the report rendered the India Code statute text as
+plain undifferentiated body text. Verified by capturing the actual HTML
+`downloadReport()` produces (via a live browser session) before and after.
+Fixed by adding matching `.statute-lookup` CSS to the report's own embedded
+stylesheet. See `FINDINGS.md` F-24 addendum.
+
 ## 2026-09-11 (78) — provision lookup switched from IndianKanoon judgment-search to India Code's own statute text; one HTTP call, verbatim exact text
 
 Owner wanted the EXACT text of a cited provision ("if we say UGC Act sec 23

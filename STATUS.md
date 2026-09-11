@@ -27,7 +27,15 @@ not re-add it without re-reading `FINDINGS.md` F-21 first; `real_pdfs/` exists (
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 78: provision lookup switched from IndianKanoon judgment-search to India Code's own statute text, see FINDINGS.md F-24)
+**Last updated:** 2026-09-11 (entry 79: counsel-report PDF statute-text styling fixed, see FINDINGS.md F-24 addendum)
+
+**2026-09-11 — Counsel-report PDF: fixed statute text rendering unstyled (same-day regression from entry 78).**
+Owner asked to verify the "Download counsel report (PDF)" output (`window.print()` on a self-contained HTML document
+`ui/app.js` builds, no server PDF library) before finalizing this session. The new India Code statute-text box from
+entry 78 was only styled in `ui/styles.css`, which the report never loads — it rendered as plain body text with no
+visual separation. Verified by capturing the real `downloadReport()` output in a live browser session, before and
+after. Fixed by adding matching CSS to the report's own embedded stylesheet. Full writeup: `FINDINGS.md` F-24
+addendum.
 
 **2026-09-11 — Provision lookup switched from IndianKanoon judgment-search to India Code's own statute text; one
 HTTP call, verbatim exact text (supersedes F-17).** Owner wanted the EXACT text of a cited provision and asked
