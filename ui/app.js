@@ -499,8 +499,8 @@ const App = {
                 <span class="prov-count">×${p.count}</span>
               </span>
               ${p.statute_lookup ? `<div class="statute-lookup">
-                  <p>${esc(p.statute_lookup.snippet)}</p>
-                  <a href="${esc(p.statute_lookup.source_url)}" target="_blank" rel="noopener">Source: IndianKanoon — ${esc(p.statute_lookup.title)}</a>
+                  <p>${esc(p.statute_lookup.text)}</p>
+                  <a href="${esc(p.statute_lookup.source_url)}" target="_blank" rel="noopener">Source: India Code — ${esc(p.statute_lookup.title)}</a>
                 </div>` : ""}
             </span>`).join("")}
         </div></div>`;
@@ -672,8 +672,8 @@ const App = {
             const sl = p.statute_lookup;
             return `<li><b>${esc(p.raw)}</b>${p.act ? ` — ${esc(p.act)}` : ` <i>(act not named nearby)</i>`}
               ${sl ? `<div class="statute-lookup">
-                  <p>${esc(sl.snippet)}</p>
-                  <a href="${esc(sl.source_url)}" target="_blank" rel="noopener">Source: IndianKanoon — ${esc(sl.title)}</a>
+                  <p>${esc(sl.text)}</p>
+                  <a href="${esc(sl.source_url)}" target="_blank" rel="noopener">Source: India Code — ${esc(sl.title)}</a>
                 </div>` : ""}</li>`;
           }).join("")}</ul>` : ""}
 

@@ -34,7 +34,8 @@
           By default, the only thing that ever leaves this device is an anonymous page-load count (no document
           data, ever) so the people behind this tool know it's actually being used. Turning on "Look up cited
           provisions online" (off by default, on the upload screen) additionally sends each cited provision's
-          own citation — never document content — to IndianKanoon.org to fetch its text.</p>
+          own citation — never document content — to India Code (via eCourtsIndia's public API) to fetch its
+          exact text.</p>
         <div class="correctness-notice">
           <span class="glyph">⚠</span>
           <p><strong>Verify before relying on it.</strong> Extraction can miss or misread a fact — especially on
@@ -74,9 +75,10 @@
 
     <label id="lookupProvisionsRow" class="checkbox-row hidden">
       <input type="checkbox" id="lookupProvisionsInput">
-      <span>Look up cited provisions online (Section/Act citations) so their actual text shows up next to them —
+      <span>Look up cited provisions online (Section/Act citations) so their exact text shows up next to them —
         sends only the citation itself (e.g. "Section 125 CrPC"), never any document content, to
-        <a href="https://indiankanoon.org" target="_blank" rel="noopener">IndianKanoon.org</a>. Off by default;
+        <a href="https://indiacode.ecourtsindia.com" target="_blank" rel="noopener">India Code</a> (the
+        Government of India's own statute text, via eCourtsIndia's public API). Off by default;
         skipped automatically whenever a match isn't clear.</span>
     </label>
 

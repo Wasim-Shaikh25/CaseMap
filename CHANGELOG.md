@@ -4,6 +4,45 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (78) — provision lookup switched from IndianKanoon judgment-search to India Code's own statute text; one HTTP call, verbatim exact text
+
+Owner wanted the EXACT text of a cited provision ("if we say UGC Act sec 23
+I just want exact text for that sec 23"), asked whether a free search
+engine could do it in one call, and accepted skipping the unresolvable
+cases. Full writeup: `FINDINGS.md` F-24 (supersedes F-17).
+
+Found `indiacode.ecourtsindia.com` — a free, no-key JSON mirror of India
+Code (Government of India's own statute repository, 836 Central Acts),
+built for programmatic retrieval. Its section endpoint returns the Act's
+own verbatim text, not a judgment that cites it — confirmed against the
+real UGC Act s.23, Prevention of Corruption Act s.7, NIA Act s.21, PWDV Act
+s.12, NI Act s.138.
+
+"One call, not two or three": added `scripts/build_indiacode_acts_index.py`
+(one-time, never run from the request path) which fetches all 836 Central
+Acts' `{id, short_title, act_year}` into bundled `src/indiacode_acts.json`
+(~125KB). `provision_lookup.py` rewritten to fuzzy-match (rapidfuzz,
+already a dependency) the citation's Act name against this LOCAL file —
+zero network calls — narrowing by year first when present; only the
+section-text fetch itself touches the network. Handles Act names
+`_find_act_name()` truncates (e.g. "Corruption Act, 1988" for "The
+Prevention of Corruption Act, 1988") via fuzzy matching against the full
+local title. Skips honestly (never guesses) when an Act reference has no
+year and is genuinely ambiguous in the corpus ("Income Tax Act" — both a
+1961 and a 2025 Act exist), when no Act name was detected at all, or when
+the Act isn't in the 836-row Central index — all confirmed by tests to
+make zero network calls in those cases.
+
+`ui/app.js` (both render sites), `ui/index.html` (both disclosure
+paragraphs) updated from IndianKanoon.org to India Code / eCourtsIndia.
+`ui/styles.css`'s statute-lookup box given a max-height + scroll since real
+section text runs much longer than the old search snippet. `tests/
+test_provision_lookup.py` fully rewritten (10 tests, fake local index + fake
+`requests.get`, no real network). Verified end-to-end via a live server +
+real browser: uploaded a real fetched judgment with the provisions checkbox
+on, confirmed the real India Code text renders correctly and scrolls inside
+its own box on the actual Provisions tab. Full suite: 83 passed.
+
 ## 2026-09-11 (77) — structural fix for F-22's residual address-fragment noise, plus a real GLiNER gap on "State of Maharashtra"
 
 Owner asked to fix the residual party-extraction noise F-22's addendum

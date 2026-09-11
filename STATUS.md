@@ -27,7 +27,20 @@ not re-add it without re-reading `FINDINGS.md` F-21 first; `real_pdfs/` exists (
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 77: structural fix for F-22's residual address-fragment noise, plus a real GLiNER "State of Maharashtra" gap, see FINDINGS.md F-23)
+**Last updated:** 2026-09-11 (entry 78: provision lookup switched from IndianKanoon judgment-search to India Code's own statute text, see FINDINGS.md F-24)
+
+**2026-09-11 — Provision lookup switched from IndianKanoon judgment-search to India Code's own statute text; one
+HTTP call, verbatim exact text (supersedes F-17).** Owner wanted the EXACT text of a cited provision and asked
+whether a free search engine could do it in one call, accepting that unresolvable citations skip. Found
+`indiacode.ecourtsindia.com` — a free, no-key JSON mirror of India Code (836 Central Acts) built for programmatic
+retrieval; its section endpoint returns the Act's own verbatim text, confirmed against several real provisions.
+Kept it to one HTTP call per provision by resolving the Act name against a LOCAL bundled index
+(`src/indiacode_acts.json`, fetched once by `scripts/build_indiacode_acts_index.py`, never at request time) via
+rapidfuzz instead of a second network round-trip; only the section-text fetch itself touches the network. Skips
+honestly (zero network calls, confirmed by tests) when an Act reference is genuinely ambiguous, unnamed, or outside
+the Central-Act index. UI disclosure text and the provisions render (both sites) updated from IndianKanoon to India
+Code; verified end-to-end via a live server + real browser upload with the lookup checkbox on. Full suite: 83
+passed. Full writeup: `FINDINGS.md` F-24.
 
 **2026-09-11 — Structural fix for F-22's residual party-extraction noise; found and fixed a real GLiNER gap on
 "State of Maharashtra" along the way.** Owner asked to fix the address-fragment noise ("Grampanchayat Tiroda",

@@ -1,49 +1,102 @@
-"""provision_lookup.py -- OPTIONAL, opt-in only: fetches what a cited
-provision actually says from a free public source (IndianKanoon.org's bare
-statute text, no login or API key required) so a reader can see it without
-leaving the app.
+"""provision_lookup.py -- OPTIONAL, opt-in only: fetches the EXACT verbatim
+text of a cited provision from India Code (via eCourtsIndia's free, no-key
+JSON mirror, https://indiacode.ecourtsindia.com) so a reader can see the
+actual section without leaving the app.
 
-Privacy: ONE outbound HTTP call per UNIQUE provision citation per
-document-processing run (in-process cache below), and the query is the
-citation string alone ("Section 125 of the Code of Criminal Procedure") --
-never any document content, page text, or party names. Only runs when the
-caller opts in (casemap_service.process_document(lookup_provisions=True));
-off by default, disclosed in the UI wherever the toggle lives.
+Why this source, not a search engine (2026-09-11, F-24, replacing the
+IndianKanoon-search version from F-17): India Code is the Government of
+India's own statute repository; the section endpoint returns the ACT'S OWN
+TEXT, not a judgment that happens to quote or cite it. The earlier version
+searched court judgments on IndianKanoon and inferred the statute text was
+probably right from a confidence gate on the search result's metadata --
+this one gets the text directly from the primary source, verbatim, with no
+inference step. "It does not paraphrase a provision and present it as the
+provision" is the source's own stated design (its /llms.txt) -- exactly this
+pipeline's own verbatim-only stance (THESIS.md), from an independent source
+that committed to it first.
 
-Skips (returns None) whenever the match isn't clearly a bare-statute result
--- the same verbatim-only stance as the rest of this pipeline: a wrong
-statute link is worse than none. Never raises: a network failure, timeout,
-or an IndianKanoon page-layout change all degrade to "not found" and the
-document result is otherwise unaffected.
+ONE HTTP call per unique provision, not two: resolving "UGC Act" (or a
+truncated match like "Corruption Act, 1988" for "The Prevention of
+Corruption Act, 1988") to its API slug runs against a LOCAL, bundled index
+of every Central Act's title (src/indiacode_acts.json, 836 rows, fetched
+ONCE by scripts/build_indiacode_acts_index.py -- never at request time) via
+rapidfuzz, already a project dependency. Only the section-text fetch itself
+touches the network. A citation whose act can't be confidently resolved
+locally, or isn't in the 836-Act Central index at all (a State Act, or an
+Act passed after the index was last rebuilt), is a known, accepted
+exception: it skips rather than guesses or falls back to a second network
+call.
+
+Privacy: unchanged from F-17 -- one outbound call per UNIQUE provision
+citation per document-processing run (in-process cache below), and the
+query is the citation string alone -- never document content. Opt-in only
+(casemap_service.process_document(lookup_provisions=True)), disclosed in
+the UI wherever the toggle lives.
+
+Skips (returns None) whenever the act can't be confidently matched, or the
+section endpoint 404s -- a wrong statute link is worse than none. Never
+raises: a network failure, timeout, or missing local index all degrade to
+"not found" and the document result is otherwise unaffected.
 """
 
 from __future__ import annotations
 
-import html
+import json
+import os
 import re
 
 import requests
+from rapidfuzz import fuzz, process
 
-SEARCH_URL = "https://indiankanoon.org/search/"
+API_BASE = "https://indiacode.ecourtsindia.com/api/v1"
 TIMEOUT_S = 6
+# rapidfuzz token_set_ratio, 0-100. Chosen high: a wrong-Act match here would
+# hand a reader the WRONG law under the citation they searched for, worse
+# than the honest "not found" a lower score would produce instead.
+MATCH_THRESHOLD = 90
 
 _CACHE: dict[str, dict | None] = {}
+_ACTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "indiacode_acts.json")
+_ACTS_INDEX: list[dict] | None = None
 
-# One search-result <article> block, non-greedy across the intervening
-# <div class="hlbottom"> wrapper -- confirmed against a real response
-# (see scripts/poc_provision_lookup.py) rather than guessed from memory of
-# the site's markup.
-_RESULT_RE = re.compile(
-    r'<article class="result".*?<h4 class="result_title">.*?'
-    r'<a href="(?P<href>/doc/\d+/)">(?P<title>.*?)</a>.*?'
-    r'<div class="headline">(?P<headline>.*?)</div>.*?'
-    r'<span class="docsource">(?P<docsource>.*?)</span>',
-    re.S)
-_TAG_RE = re.compile(r"<[^>]+>")
+_SEC_NUM_RE = re.compile(r"\d+[A-Za-z]{0,2}")
+_YEAR_RE = re.compile(r"\b(1[7-9]\d{2}|20\d{2})\b")
+_LEADING_THE_RE = re.compile(r"^\s*the\s+", re.I)
 
 
-def _clean(raw: str) -> str:
-    return html.unescape(_TAG_RE.sub("", raw)).strip()
+def _load_acts_index() -> list[dict]:
+    global _ACTS_INDEX
+    if _ACTS_INDEX is None:
+        with open(_ACTS_PATH, encoding="utf-8") as f:
+            _ACTS_INDEX = json.load(f)
+    return _ACTS_INDEX
+
+
+def _resolve_act_slug(act: str) -> str | None:
+    """Fuzzy-match `act` against the LOCAL bundled index -- no network call.
+    A year found in `act` (most citations from _find_act_name() carry one,
+    e.g. "Prevention of Corruption Act, 1988") narrows the candidate pool
+    first, since Act names repeat across different years far more than
+    within one; only the year-filtered pool is fuzzy-matched when that
+    narrowing found anything. Returns the act's `id` (the slug the section
+    endpoint needs), or None if nothing matches confidently enough."""
+    if not act:
+        return None
+    acts = _load_acts_index()
+    query = _LEADING_THE_RE.sub("", act).strip().rstrip(".")
+    year_m = _YEAR_RE.search(query)
+    candidates = acts
+    if year_m:
+        year_filtered = [a for a in acts if a.get("act_year") == int(year_m.group(1))]
+        if year_filtered:
+            candidates = year_filtered
+    if not candidates:
+        return None
+    best = process.extractOne(
+        query, [a["short_title"] for a in candidates], scorer=fuzz.token_set_ratio)
+    if not best or best[1] < MATCH_THRESHOLD:
+        return None
+    return candidates[best[2]]["id"]
 
 
 def reset_cache() -> None:
@@ -52,46 +105,43 @@ def reset_cache() -> None:
 
 
 def lookup_provision(section_raw: str, act: str | None) -> dict | None:
-    """One provision -> {"title", "snippet", "source_url"}, or None if no
-    confident bare-statute match was found. `section_raw` is exactly what
-    the deterministic SECTION_PATTERN regex matched in the document (e.g.
-    "Section 125"); `act` is whatever _find_act_name() found nearby in the
-    document, if anything -- both already computed by the caller, never
-    re-derived here.
+    """One provision -> {"title", "text", "source_url", "in_force"}, or None
+    if the Act couldn't be confidently resolved locally or the section
+    wasn't found. `section_raw` is exactly what the deterministic
+    SECTION_PATTERN regex matched in the document (e.g. "Section 125");
+    `act` is whatever _find_act_name() found nearby in the document, if
+    anything -- both already computed by the caller, never re-derived here.
+    No Act name at all means no lookup at all: this is a citation-to-statute
+    tool, not a section-number guesser.
     """
     query = f"{section_raw} {act}".strip() if act else section_raw.strip()
     if query in _CACHE:
         return _CACHE[query]
 
     result = None
-    try:
-        resp = requests.get(
-            SEARCH_URL, params={"formInput": query},
-            headers={"User-Agent": "Mozilla/5.0 (CaseMap provision lookup; "
-                                    "single verbatim-citation query, no document content)"},
-            timeout=TIMEOUT_S)
-        if resp.ok:
-            m = _RESULT_RE.search(resp.text)
-            if m:
-                docsource = _clean(m.group("docsource"))
-                title = _clean(m.group("title"))
-                sec_num_match = re.search(r"\d+[A-Z]{0,2}", section_raw)
-                sec_num = sec_num_match.group() if sec_num_match else None
-                # Confidence gate: IndianKanoon labels a bare-statute result's
-                # docsource "<something> - Section" -- a judgment or any
-                # other document type never carries that suffix. Also
-                # require the same section number to appear in the result
-                # title, so "Section 125" never silently matches a
-                # different section the query happened to also surface.
-                if (sec_num and docsource.endswith("- Section")
-                        and re.search(rf"\b{re.escape(sec_num)}\b", title)):
+    sec_m = _SEC_NUM_RE.search(section_raw or "")
+    slug = _resolve_act_slug(act) if act else None
+    if sec_m and slug:
+        try:
+            resp = requests.get(
+                f"{API_BASE}/{slug}/section/{sec_m.group()}",
+                headers={"User-Agent": "Mozilla/5.0 (CaseMap provision lookup; "
+                                        "single verbatim-citation query, no document content)"},
+                timeout=TIMEOUT_S)
+            if resp.ok:
+                data = resp.json()
+                sec = data.get("section") or {}
+                text = sec.get("text")
+                act_meta = data.get("act") or {}
+                if text:
                     result = {
-                        "title": title,
-                        "snippet": _clean(m.group("headline")),
-                        "source_url": "https://indiankanoon.org" + m.group("href"),
+                        "title": f"Section {sec.get('number')} — {act_meta.get('short_title')}",
+                        "text": text,
+                        "source_url": data.get("url"),
+                        "in_force": act_meta.get("in_force"),
                     }
-    except requests.RequestException:
-        result = None
+        except (requests.RequestException, ValueError):
+            result = None
 
     _CACHE[query] = result
     return result

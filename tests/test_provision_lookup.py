@@ -1,126 +1,137 @@
 """
-test_provision_lookup.py — tests the GLUE CODE (HTML parsing, confidence
-gate, caching, failure handling) against a FAKE requests.get, not the real
-IndianKanoon.org site. Same spirit as test_opennyai_bridge.py: what's faked
-is the network response; what's real is everything downstream — the regex
-extraction, the confidence gate, the in-process cache.
+test_provision_lookup.py — tests the GLUE CODE (local-index fuzzy matching,
+JSON parsing, caching, failure handling) against a FAKE requests.get and a
+tiny FAKE local acts index, not the real indiacode.ecourtsindia.com site or
+the real 836-row src/indiacode_acts.json.
 
-The fixture HTML below is a trimmed, structurally faithful copy of a real
-response (confirmed by hand against indiankanoon.org/search/?formInput=...
-during development, 2026-09-11) — same tag names, same class names, same
-nesting, just fewer results and shorter headline text.
+Same spirit as test_opennyai_bridge.py: what's faked is the network response
+and the local index; what's real is everything downstream — the act-name
+fuzzy match, the section-number extraction, the confidence threshold, the
+in-process cache.
 """
 
 import provision_lookup as pl
 
+FAKE_ACTS = [
+    {"id": "crpc", "short_title": "The Code of Criminal Procedure, 1973", "act_year": 1973},
+    {"id": "pc-act-1988", "short_title": "The Prevention of Corruption Act, 1988", "act_year": 1988},
+    {"id": "dv-act", "short_title": "The Protection of Women from Domestic Violence Act, 2005", "act_year": 2005},
+    {"id": "companies-act-1956", "short_title": "The Companies Act, 1956", "act_year": 1956},
+    {"id": "companies-act-2013", "short_title": "The Companies Act, 2013", "act_year": 2013},
+]
+
 
 class _FakeResponse:
-    def __init__(self, html, ok=True):
-        self.text = html
+    def __init__(self, json_body, ok=True):
+        self._json = json_body
         self.ok = ok
 
-
-def _fake_response(html: str, ok: bool = True):
-    return _FakeResponse(html, ok)
-
-
-BARE_STATUTE_HTML = """
-<div class="results-list">
-<article class="result" role="listitem">
-  <h4 class="result_title">
-    <a href="/doc/1056396/"><b>Section</b> <b>125</b> in The <b>Code</b> of <b>Criminal</b> <b>Procedure</b>, 1973</a>
-    [<a href="/doc/445276/">Entire Act</a>]
-  </h4>
-  <div class="headline">
-    <b>Section</b> <b>125</b> in The <b>Code</b> of <b>Criminal</b> <b>Procedure</b>, 1973
-    <b>125</b>. Order for maintenance of wives, children and parents.
-    (1) If any person having sufficient means ... from time to time direct
-  </div>
-  <div class="hlbottom">
-    <span class="docsource">Union of India - Section</span>
-  </div>
-</article>
-</div>
-"""
-
-JUDGMENT_ONLY_HTML = """
-<div class="results-list">
-<article class="result" role="listitem">
-  <h4 class="result_title">
-    <a href="/docfragment/117541087/?formInput=Section%20125">Rajnesh vs Neha on 4 November, 2020</a>
-  </h4>
-  <div class="headline">
-    maintenance under this Act ... <b>Section</b> <b>125</b> of the Cr.P.C.
-  </div>
-  <div class="hlbottom">
-    <span class="docsource">Supreme Court of India</span>
-  </div>
-</article>
-</div>
-"""
-
-WRONG_SECTION_NUMBER_HTML = """
-<div class="results-list">
-<article class="result" role="listitem">
-  <h4 class="result_title">
-    <a href="/doc/999999/"><b>Section</b> <b>9</b> in The <b>Indian</b> <b>Contract</b> <b>Act</b>, 1872</a>
-  </h4>
-  <div class="headline">Section 9 in The Indian Contract Act, 1872</div>
-  <div class="hlbottom">
-    <span class="docsource">Indian Contract Act - Section</span>
-  </div>
-</article>
-</div>
-"""
+    def json(self):
+        return self._json
 
 
-def test_confident_bare_statute_match(monkeypatch):
+SECTION_125_OK = {
+    "act": {"short_title": "The Code of Criminal Procedure, 1973", "in_force": True},
+    "section": {"number": "125", "text": "Order for maintenance of wives, children and parents. ..."},
+    "url": "https://indiacode.ecourtsindia.com/crpc/section/125/",
+}
+
+
+def _patch_index(monkeypatch, acts=FAKE_ACTS):
+    monkeypatch.setattr(pl, "_ACTS_INDEX", list(acts))
+
+
+def test_confident_match_returns_verbatim_text(monkeypatch):
     pl.reset_cache()
-    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _fake_response(BARE_STATUTE_HTML))
+    _patch_index(monkeypatch)
+    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _FakeResponse(SECTION_125_OK))
 
-    result = pl.lookup_provision("Section 125", "Code of Criminal Procedure")
+    result = pl.lookup_provision("Section 125", "Code of Criminal Procedure, 1973")
 
     assert result is not None
-    assert result["title"] == "Section 125 in The Code of Criminal Procedure, 1973"
-    assert result["source_url"] == "https://indiankanoon.org/doc/1056396/"
-    assert "Order for maintenance" in result["snippet"]
+    assert result["text"].startswith("Order for maintenance")
+    assert result["source_url"] == "https://indiacode.ecourtsindia.com/crpc/section/125/"
+    assert result["in_force"] is True
+    assert "Code of Criminal Procedure" in result["title"]
 
 
-def test_judgment_result_is_skipped_not_guessed(monkeypatch):
-    """First result is a judgment (docsource has no '- Section' suffix) —
-    must skip, never mistake case law for the statute text itself."""
+def test_truncated_act_name_still_resolves_via_fuzzy_match(monkeypatch):
+    """A truncated act name (as _find_act_name()'s regex often produces,
+    e.g. "Corruption Act, 1988" for "The Prevention of Corruption Act,
+    1988") must still resolve locally -- the whole point of fuzzy matching
+    against the bundled index instead of requiring an exact string."""
     pl.reset_cache()
-    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _fake_response(JUDGMENT_ONLY_HTML))
+    _patch_index(monkeypatch)
+    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _FakeResponse({
+        "act": {"short_title": "The Prevention of Corruption Act, 1988", "in_force": True},
+        "section": {"number": "7", "text": "Offence relating to public servant being bribed."},
+        "url": "https://indiacode.ecourtsindia.com/pc-act-1988/section/7/",
+    }))
 
-    result = pl.lookup_provision("Section 125", "Code of Criminal Procedure")
+    result = pl.lookup_provision("Section 7", "Corruption Act, 1988")
 
-    assert result is None
+    assert result is not None
+    assert "Offence relating to public servant" in result["text"]
 
 
-def test_mismatched_section_number_is_skipped(monkeypatch):
-    """docsource looks like a bare statute, but it's a DIFFERENT section
-    than what was queried — the number-match guard must catch this."""
+def test_year_disambiguates_same_named_acts(monkeypatch):
+    """Two Acts can share almost the same name across different years
+    (Companies Act 1956 vs 2013) -- the year in the citation must pick the
+    right one, confirmed by which slug gets requested."""
     pl.reset_cache()
-    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _fake_response(WRONG_SECTION_NUMBER_HTML))
+    _patch_index(monkeypatch)
+    requested = []
+
+    def fake_get(url, **kwargs):
+        requested.append(url)
+        return _FakeResponse({
+            "act": {"short_title": "The Companies Act, 2013", "in_force": True},
+            "section": {"number": "2", "text": "Definitions."},
+            "url": "https://indiacode.ecourtsindia.com/companies-act-2013/section/2/",
+        })
+
+    monkeypatch.setattr(pl.requests, "get", fake_get)
+    pl.lookup_provision("Section 2", "Companies Act, 2013")
+
+    assert requested and "companies-act-2013" in requested[0]
+
+
+def test_no_act_name_skips_without_any_network_call(monkeypatch):
+    """A citation-to-statute tool needs the Act, not just a section number
+    -- a bare 'Section 125' with nothing nearby must not guess."""
+    pl.reset_cache()
+    _patch_index(monkeypatch)
+    calls = []
+    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: calls.append(1))
 
     result = pl.lookup_provision("Section 125", None)
 
     assert result is None
+    assert calls == []
 
 
-def test_no_results_is_skipped(monkeypatch):
+def test_unresolvable_act_skips_without_any_network_call(monkeypatch):
+    """An Act name with no confident match in the local index (a State Act,
+    or an Act outside the bundled 836) must skip locally -- never a second
+    'let's search for it' network round-trip."""
     pl.reset_cache()
-    monkeypatch.setattr(pl.requests, "get",
-                        lambda *a, **k: _fake_response('<div class="results-list"></div>'))
+    _patch_index(monkeypatch)
+    calls = []
+    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: calls.append(1))
 
-    assert pl.lookup_provision("Section 9999999", "Nonexistent Act") is None
+    result = pl.lookup_provision("Section 5", "Some Entirely Fictional Statute, 1999")
+
+    assert result is None
+    assert calls == []
 
 
-def test_non_ok_response_is_skipped(monkeypatch):
+def test_section_not_found_is_skipped(monkeypatch):
     pl.reset_cache()
-    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _fake_response(BARE_STATUTE_HTML, ok=False))
+    _patch_index(monkeypatch)
+    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _FakeResponse(
+        {"error": "not_found"}, ok=False))
 
-    assert pl.lookup_provision("Section 125", "Code of Criminal Procedure") is None
+    assert pl.lookup_provision("Section 9999", "Code of Criminal Procedure, 1973") is None
 
 
 def test_network_exception_never_raises(monkeypatch):
@@ -130,26 +141,40 @@ def test_network_exception_never_raises(monkeypatch):
     def boom(*a, **k):
         raise pl.requests.exceptions.ConnectionError("no route to host")
     pl.reset_cache()
+    _patch_index(monkeypatch)
     monkeypatch.setattr(pl.requests, "get", boom)
 
-    assert pl.lookup_provision("Section 125", "Code of Criminal Procedure") is None
+    assert pl.lookup_provision("Section 125", "Code of Criminal Procedure, 1973") is None
+
+
+def test_malformed_json_never_raises(monkeypatch):
+    pl.reset_cache()
+    _patch_index(monkeypatch)
+
+    class _BadJson(_FakeResponse):
+        def json(self):
+            raise ValueError("not json")
+
+    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _BadJson({}))
+
+    assert pl.lookup_provision("Section 125", "Code of Criminal Procedure, 1973") is None
 
 
 def test_result_is_cached_per_unique_query(monkeypatch):
     """One provision per unique (section, act) pair should hit the network
-    exactly once, even when looked up repeatedly — the whole point of the
-    cache (one outbound call per unique provision per document)."""
+    exactly once, even when looked up repeatedly."""
+    pl.reset_cache()
+    _patch_index(monkeypatch)
     calls = []
 
     def counting_get(*a, **k):
         calls.append(1)
-        return _fake_response(BARE_STATUTE_HTML)
+        return _FakeResponse(SECTION_125_OK)
 
-    pl.reset_cache()
     monkeypatch.setattr(pl.requests, "get", counting_get)
 
-    first = pl.lookup_provision("Section 125", "Code of Criminal Procedure")
-    second = pl.lookup_provision("Section 125", "Code of Criminal Procedure")
+    first = pl.lookup_provision("Section 125", "Code of Criminal Procedure, 1973")
+    second = pl.lookup_provision("Section 125", "Code of Criminal Procedure, 1973")
 
     assert first == second
     assert len(calls) == 1
@@ -157,12 +182,11 @@ def test_result_is_cached_per_unique_query(monkeypatch):
 
 def test_different_provisions_are_not_conflated_in_cache(monkeypatch):
     pl.reset_cache()
-    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _fake_response(BARE_STATUTE_HTML))
+    _patch_index(monkeypatch)
+    monkeypatch.setattr(pl.requests, "get", lambda *a, **k: _FakeResponse(SECTION_125_OK))
 
-    result_with_act = pl.lookup_provision("Section 125", "Code of Criminal Procedure")
+    result_with_act = pl.lookup_provision("Section 125", "Code of Criminal Procedure, 1973")
     result_no_act = pl.lookup_provision("Section 125", None)
 
-    # Different cache keys (different query strings) -- both resolve
-    # independently rather than one silently reusing the other's result.
     assert result_with_act is not None
-    assert result_no_act is not None
+    assert result_no_act is None

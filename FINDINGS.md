@@ -9,7 +9,104 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 6 · **Fixed:** 15 · **Superseded:** 0
+**Open:** 6 · **Fixed:** 16 · **Superseded:** 1 (F-17, provision lookup, superseded by F-24)
+
+## F-24 — Provision lookup switched from IndianKanoon judgment-search to India Code's own statute text (eCourtsIndia's free JSON API); one HTTP call per provision, verbatim exact text instead of a search-result inference
+
+**Date:** 2026-09-11
+**One-liner:** Owner wanted the exact verbatim text of a cited provision
+("if we say UGC Act sec 23 I just want exact text for that sec 23"), asked
+whether a free search engine could do it in one call, and was fine with
+accepting exceptions (some citations skip) for that. F-17's IndianKanoon
+version inferred the statute text was probably right by searching judgments
+and gating on a confidence heuristic (`docsource` ends `"- Section"` + the
+section number appears in the result title) — a real, working design, but
+an INFERENCE over judgment search results, not the statute's own text.
+Replaced with a source that IS the statute's own text.
+
+**Source found:** `indiacode.ecourtsindia.com` — a free, no-API-key JSON/
+Markdown mirror of India Code (the Government of India's own statute
+repository: 836 Central Acts, 77,072 sections), built explicitly for
+programmatic retrieval (`robots.txt` welcomes answer-engine crawlers by
+name; `/llms.txt` documents the API). Its own stated design: "It does not
+paraphrase a provision and present it as the provision" — the same
+verbatim-only stance this pipeline already holds (THESIS.md), independently
+arrived at by the source. Confirmed directly: `GET /api/v1/university-
+grants-commission-act-1956/section/23` returns the section's real number,
+heading, and exact text — checked against the actual UGC Act, matches.
+
+**"One call, not two or three" — how:** the earlier design's 2-network-call
+shape (search, then infer from the result) is replaced with ONE call
+per provision by moving act-name resolution OFF the network entirely.
+`scripts/build_indiacode_acts_index.py` (new, one-time/manual, never run
+from the request path) fetches all 836 Central Acts' `{id, short_title,
+act_year}` once and writes `src/indiacode_acts.json` (~125KB, bundled with
+the repo). At request time, `provision_lookup._resolve_act_slug()`
+fuzzy-matches the citation's Act name (rapidfuzz `token_set_ratio`, already
+a project dependency — no new one added) against this LOCAL file — zero
+network calls — narrowing by year first when the citation carries one
+(Companies Act 1956 vs. 2013 are both real, different Acts). Only the
+section-text fetch itself is a real HTTP call. Handles truncated Act names
+gracefully: `_find_act_name()`'s regex often drops a lowercase-led prefix
+("Corruption Act, 1988" for "The Prevention of Corruption Act, 1988") —
+fuzzy matching against the full local title still resolves these correctly
+(confirmed: `Section 7` / `"Corruption Act, 1988"` → real text of the
+Prevention of Corruption Act's actual s.7).
+
+**The accepted exceptions (the owner said this was fine):** a bare Act
+reference with no year is skipped, not guessed, whenever it's ALSO
+genuinely ambiguous in the corpus — "Income Tax Act" (both an Income-tax
+Act, 1961 and one from 2025 exist) or "Finance Act" (one exists per year,
+none titled just "Finance Act") score too low against every real title at
+the 90-point confidence threshold to pick one safely; a citation with no
+Act name detected nearby skips immediately (never network-called at all,
+confirmed by test); a State Act or an Act outside the 836-row Central index
+skips the same way. All honest "not found," never a guess, matching this
+pipeline's existing skip-if-ambiguous design (F-17's own stance, carried
+forward unchanged).
+
+**A genuine data-quality note found while testing, not something this code
+touches:** one section's `judgments[].ratio_decidendi` field in the raw API
+response contained odd curator-notes phrased as if addressing an AI
+consumer of the feed ("Map dv-act 12 cited only. Do not pad dv-act
+2/17/19/20..."). `provision_lookup.py` only ever reads `section.text` (the
+actual statute text) from the response, never the `judgments` array, so
+this has no path into anything this pipeline shows a user — noted here as
+a trust caveat about the source's judgment-annotation feature specifically,
+not the statute-text feature this integration actually uses.
+
+**Changes:** `src/provision_lookup.py` rewritten around the new source
+(same `lookup_provision(section_raw, act) -> dict | None` signature and
+cache design as F-17, new return shape `{title, text, source_url,
+in_force}` replacing `{title, snippet, source_url}`). `ui/app.js` (both
+render sites — the cross-document provisions crowd view and the per-document
+report list) and `ui/index.html`'s two disclosure paragraphs updated from
+IndianKanoon.org to India Code / eCourtsIndia. `ui/styles.css`'s
+`.statute-lookup p` given `max-height:220px; overflow-y:auto` since real
+section text runs much longer than the old search-snippet did (confirmed:
+NIA Act s.21 renders as a scrollable box in the actual UI, not a broken
+giant chip). `tests/test_provision_lookup.py` fully rewritten (10 tests,
+fake local index + fake `requests.get`, no real network or the real
+836-row file): confident match, truncated-name fuzzy resolution, year
+disambiguation between same-named Acts, no-Act-name skip with a network-call
+count assertion of zero, unresolvable-Act skip with the same assertion,
+section-not-found, connection error, malformed JSON, and cache reuse/
+non-conflation.
+
+**Evidence:** direct `curl` verification of the real API (UGC Act s.23,
+Prevention of Corruption Act s.7, NIA Act s.21, PWDV Act s.12, NI Act
+s.138 — all real, exact statute text, hand-checked); full `process_document
+(lookup_provisions=True)` run against the real fetched NGT/writ-petition/
+Sharjeel-Imam documents (F-22's `temp/2026-09-11-real-docs-fetch-test/`,
+`temp/2026-09-11-real-docs-batch2/` — both gitignored, never committed);
+end-to-end UI verification via a live server + real browser (simulated file
+upload, the "Look up cited provisions online" checkbox actually ticked,
+confirmed the India Code text and its source link render correctly and
+scroll inside their own box on the real Provisions tab). Full suite: 83
+passed (same count as before — 8 old tests replaced by 10 new ones).
+**Status:** Fixed. Supersedes F-17's IndianKanoon-search design; that
+finding's own text is left as historical record per this register's
+append-only convention.
 
 ## F-23 — Structural fix for F-22's residual address-fragment noise (rejected there): numbered party blocks now default to "continuation," not "new party"; plus a genuine GLiNER gap on "State of Maharashtra"
 
@@ -477,6 +574,13 @@ DENIES dropped from 20 to 1, ASSERTS unchanged at 3. `pytest`: still 62
 passed, 1 skipped.
 
 ## F-17 — New capability: opt-in provision lookup (`src/provision_lookup.py`), the pipeline's first outbound network call
+
+> **Superseded 2026-09-11 by F-24**: `provision_lookup.py`'s source was
+> switched from IndianKanoon judgment-search to India Code's own statute
+> text (eCourtsIndia's JSON API) — exact verbatim text instead of an
+> inference over search results, and one HTTP call per provision instead of
+> a search call. This entry is left as historical record of the original
+> design per this register's append-only convention.
 
 **Date:** 2026-09-11
 **One-liner:** Owner asked to add a free web lookup so a cited provision's
