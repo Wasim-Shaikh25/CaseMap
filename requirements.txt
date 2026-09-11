@@ -35,11 +35,11 @@ rapidfuzz                   # not re-verified this session — used by is_versus
 dateparser                  # not re-verified this session
 
 # --- semantic similarity (stage 5, make_similarity_fn) ---
-sentence-transformers       # not re-verified this session; MiniLM/BGE-M3 default.
-                             # See requirements-docling.txt for the Qwen3-Embedding
-                             # evaluation path (docs/requirements/2026-09-09-structure-
-                             # and-embedding-layers/TASKS.md T3) — NOT yet confirmed
-                             # working via this same sentence-transformers path.
+sentence-transformers       # MiniLM default (EMBED_MODEL in casemap_service.py).
+                             # Qwen3-Embedding-0.6B was evaluated as an upgrade
+                             # (FINDINGS.md F-10/F-15) and rejected 2026-09-11:
+                             # better separation on a small sample, but ~112x
+                             # slower on CPU — stays on MiniLM.
 
 # --- mandatory ML layer (stage 2, opennyai_bridge.py) — VERIFIED 2026-09-09 ---
 spacy==3.8.16

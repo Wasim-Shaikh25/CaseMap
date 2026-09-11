@@ -9,7 +9,65 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 7 · **Fixed:** 12 · **Superseded:** 0
+**Open:** 6 · **Fixed:** 13 · **Superseded:** 0
+
+## F-21 — Docling layout layer removed: never active in the deployed app, fully redundant with the project's own OCR, and its one unique capability never showed a downstream accuracy gain
+
+**Date:** 2026-09-11
+**One-liner:** Owner asked why Docling was needed at all given the project's
+existing infra, and to close the question. Re-examined `layout_structure.py`
+(the Docling-backed layer `segment_document_layered()` called ahead of the
+legacy text-pattern detector) against what the pipeline already has, and
+removed it.
+
+**Analysis:**
+1. **Never active in practice.** F-15 (2026-09-11) had already confirmed
+   `docling` is not installed in this project's own `.venv` — by deliberate,
+   never-revisited design (`requirements-docling.txt`'s own header: untested
+   combined with the mandatory `spacy==3.8.16`/`en_legal_ner_sm` chain). Every
+   real document this pipeline has ever processed in the deployed app went
+   through `_legacy()`. The Docling code path existed but had never once run
+   outside an isolated eval venv.
+2. **OCR benefit fully duplicated.** F-10 credited Docling's bundled RapidOCR
+   with handling scanned PDFs. But `casemap_pipeline.py` STAGE 0 already has
+   its own first-class OCR layer (`ocr_page()`/`extract_pages()`, three
+   engines — Tesseract/PaddleOCR/Surya — with real preprocessing, per-page
+   caching, and a three-way digital/scanned/mixed page classifier). Docling's
+   OCR was never the reason a scanned page produced text in this pipeline;
+   the existing stage already did that.
+3. **Its one distinct capability was never measured end-to-end.** The
+   difference from the legacy detector is real: `detect_structure()`'s
+   `ANNEXURE_PATTERN` is a fixed vocabulary tuned for petition filings
+   (ANNEXURE, EXHIBIT, AFFIDAVIT, PRAYER, GROUNDS, ...), while Docling's ML
+   layout model found generic headings ("ORDER", "IN THE MATTER OF:") on
+   judgment-style PDFs by visual signal, not vocabulary. F-10's evidence for
+   this was "the extracted heading text was correct" on 4 documents — never
+   "downstream party/event/rhetorical-role extraction got measurably better
+   because of it." No test in this project ever compared extraction quality
+   with vs. without the Docling tier.
+4. **Weight vs. the project's own stated design center.** ~1.5GB for a
+   capability with no measured downstream benefit, on a project whose
+   explicit center is small, CPU-friendly models — the same reasoning that
+   already closed Qwen3-Embedding-0.6B (F-15/F-19) at a much smaller weight
+   cost (~1-2GB vs. sentence-transformers' existing MiniLM) for a *measured*
+   but insufficient gain. Docling never even had a measured gain to weigh.
+
+**Decision:** Remove it. `layout_structure.py`, `tests/test_layout_structure.py`,
+`requirements-docling.txt`, and `run.ps1 -IncludeDocling` deleted.
+`casemap_pipeline.segment_document_layered()` now calls `detect_structure()`/
+`segment_document()` directly — same `(sections, {tier, confidence,
+tier_reason, stats})` return shape, so `casemap_service.py` and the report
+need no changes; `tests/test_poc_structure_t4.py` (which only exercises that
+contract with literal tier strings, never imports `docling`) is unaffected.
+Full suite: 66 passed after removal (was 70 passed/1 skipped before — the 4
+mocked-Docling unit tests and 1 self-skipping real-PDF test are gone with the
+file).
+
+**Status:** Closed. Resolves F-15 item 2 ("Docling is not installed... known,
+accepted state") — it is no longer a state to accept, there is nothing left
+to install. If a future layout-signal need arises (e.g. a document type
+`ANNEXURE_PATTERN` genuinely can't cover), re-evaluate against a real,
+measured downstream-accuracy delta first, not heading-text correctness alone.
 
 ## F-20 — Three more rhetorical-role models actually run for real (two platform fixes worked); all three still unusable on real documents
 
@@ -394,15 +452,15 @@ code rather than trusted at face value.
    CPU-friendly, no heavy weights) the owner's call is to stay on MiniLM;
    `EMBED_MODEL` in `src/casemap_service.py:49` stays
    `"all-MiniLM-L6-v2"`. Not open any further.
-2. **Docling is not installed in this project's own `.venv`.** Confirmed
-   directly: `import docling` fails there (2026-09-11). It's proven to work
-   on real digital + scanned corpora in a *separate* evaluation venv (F-4,
-   F-10) but was deliberately never made a `requirements.txt` pin — see that
-   file's own header for why (untested combined with the mandatory
-   `spacy==3.8.16`/`en_legal_ner_sm` chain). `layout_structure.py` degrades
-   to a non-Docling tier without it; this is a known, accepted state, not a
-   bug. `run.ps1 -IncludeDocling` (added this session) installs it on
-   request.
+2. ~~**Docling is not installed in this project's own `.venv`.**~~ **Closed,
+   2026-09-11: removed entirely (F-21), not just left uninstalled.**
+   Re-examined against the project's own OCR stage and found fully
+   redundant on the one capability it was ever measured on (OCR), with its
+   other capability (generic layout-based headings) never shown to move any
+   downstream extraction result. `layout_structure.py`,
+   `requirements-docling.txt`, and `run.ps1 -IncludeDocling` deleted;
+   `segment_document_layered()` now calls the legacy text-pattern detector
+   directly. Not open any further.
 3. **`important_lines.py` model comparison needs a second real petition.**
    `testdata/`/`real_pdfs/` still have no petition-shaped filing (F-13) — the
    one comparison run exists only against the owner's own BCI petition

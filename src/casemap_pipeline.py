@@ -376,35 +376,32 @@ def segment_document(pages: list[dict], signals: dict) -> list[dict]:
 
 def segment_document_layered(pdf_path: str, pages: list[dict],
                              toc: list | None = None) -> tuple[list[dict], dict]:
-    """Preferred entry point: layout-signal structure detection with fallbacks.
+    """Entry point kept stable for callers/tests; `pdf_path` is unused.
 
-    Uses layout_structure.detect_structure_layered(), which works on BOTH
-    born-digital PDFs (real font metadata) and scans (OCR box geometry), and
-    degrades through five tiers rather than failing.
-
-    Falls back to the legacy text-pattern detector above if the layout module
-    is unavailable, so the pipeline never hard-depends on it.
-
-    Returns (sections, meta) where meta carries tier/confidence for the report.
+    A Docling-backed layout layer (`layout_structure.py`) previously sat in
+    front of the text-pattern detector below. Removed 2026-09-11 (FINDINGS.md
+    F-21): it was never installed in this project's own .venv (a deliberate,
+    never-changed choice, so the Docling path never actually ran in the
+    deployed app), its OCR benefit fully duplicates the pipeline's own
+    first-class OCR stage (STAGE 0 above), and its one distinct capability --
+    generic ML layout-based heading detection -- was only ever measured on
+    heading-text correctness, never on any downstream extraction-accuracy
+    gain, against a 1.5GB weight the project's own small-model philosophy
+    already rejected once for Qwen3-Embedding (F-15/F-19). The (tier,
+    confidence, tier_reason, stats) return shape is unchanged so the report
+    and tests need no changes.
     """
-    try:
-        from layout_structure import detect_structure_layered
-    except ImportError:
-        signals = detect_structure(pages, toc or [])
-        return segment_document(pages, signals), {
-            "tier": "legacy_text_patterns", "confidence": "unknown",
-            "tier_reason": "layout_structure module not importable",
-            "stats": signals}
-
-    result = detect_structure_layered(pdf_path, pages, toc)
-    return result.sections, {"tier": result.tier, "confidence": result.confidence,
-                             "tier_reason": result.tier_reason, "stats": result.stats}
+    signals = detect_structure(pages, toc or [])
+    return segment_document(pages, signals), {
+        "tier": "legacy_text_patterns", "confidence": "unknown",
+        "tier_reason": "text-pattern detector (ANNEXURE_PATTERN/TOC/bookmarks)",
+        "stats": signals}
 
 
 def _segment_by_headings(pages, headings) -> list[dict]:
     """One section boundary per heading, not per page. A PDF's headings
-    (from Docling's layout_structure.py, no "offset" key) are usually one
-    per physical page already -- unaffected. A .txt input loads its entire
+    (no "offset" key) are usually one per physical page already --
+    unaffected. A .txt input loads its entire
     filing as a SINGLE page, so a real petition's GROUNDS/PRAYER/AFFIDAVIT
     headings all share page_number 1: without splitting by offset within
     that one page, they'd collapse into a single section labeled after

@@ -19,14 +19,28 @@ locations:** `src/casemap_pipeline.py`, `src/document_profile.py`, `src/opennyai
 `docs/research/existing-approach/CaseMap_Mandatory_ML_Layer_v7.md`,
 `docs/research/existing-approach/poc_report.md`.
 
-**Referenced elsewhere but not found in this working directory:** `layout_structure.py`
-is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
-`real_pdfs/` exists (entry 30). Still missing: `test_logic.py`, `test_layout.py`,
+**Referenced elsewhere but not found in this working directory:** `case_symbols.py` is
+at `src/case_symbols.py`; `layout_structure.py` was removed 2026-09-11 (entry 75) — do
+not re-add it without re-reading `FINDINGS.md` F-21 first; `real_pdfs/` exists (entry
+30). Still missing: `test_logic.py`, `test_layout.py`,
 `test_profile_symbols.py`, `dryrun_real.py`, `dryrun_fallbacks.py`, `blueprint1.md`,
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 74: three more rhetorical-role models run for real via WSL — two platform issues genuinely fixed, none produce usable output, see FINDINGS.md F-20)
+**Last updated:** 2026-09-11 (entry 75: Docling layout layer removed — never active, redundant with existing OCR, no measured benefit, see FINDINGS.md F-21)
+
+**2026-09-11 — Docling layout layer removed (closes F-15 item 2).** Owner asked why
+Docling was needed given the project's own infra, and to close the question. It was
+never installed in this project's own `.venv` — every real document this pipeline has
+ever processed went through the legacy text-pattern detector only. Its credited OCR
+handling of scans (F-10) fully duplicates the pipeline's own first-class OCR stage
+(three engines, caching, page classification). Its one distinct capability (generic
+ML layout-based heading detection) was only ever measured on heading-text correctness,
+never on a downstream extraction-accuracy gain. Removed `src/layout_structure.py`,
+`tests/test_layout_structure.py`, `requirements-docling.txt`, `run.ps1
+-IncludeDocling`; `segment_document_layered()` now calls the legacy detector directly
+with the same return shape, so no other file needed changes. Full suite: 66 passed.
+Full writeup: `FINDINGS.md` F-21.
 
 **2026-09-11 — Rhetorical roles: pushed further after (73), via WSL — real fixes, still no usable model.** Owner
 correctly pushed back that (73)'s `opennyai` blocker was a platform gap, not a broken model, and asked to actually

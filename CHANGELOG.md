@@ -4,6 +4,38 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (75) — Docling layout layer removed: never active, redundant with existing OCR, no measured benefit
+
+Owner asked why Docling was needed given the project's own infra, and to
+close the question rather than leave it as an "optional, accepted" gap.
+Full analysis: `FINDINGS.md` F-21 (closes F-15 item 2).
+
+Found: `docling` was never installed in this project's own `.venv` (by
+design, never revisited) — every real document this pipeline has ever
+processed went through the legacy text-pattern detector only, so the
+Docling code path had never once run outside an isolated eval venv. Its
+credited OCR handling of scanned PDFs (F-10) is fully duplicated by the
+pipeline's own first-class OCR stage (three engines, caching, page
+classification — `casemap_pipeline.py` STAGE 0). Its one distinct
+capability (generic ML layout-based heading detection vs. the legacy
+detector's fixed `ANNEXURE_PATTERN` vocabulary) was only ever measured on
+heading-text correctness, never on a downstream extraction-accuracy gain —
+no test in this project compared results with vs. without it. Against a
+~1.5GB weight and the project's own small-model design center (same
+reasoning that already closed Qwen3-Embedding, F-15/F-19), the case to keep
+it evaluating-but-uninstalled forever was weak.
+
+Removed: `src/layout_structure.py`, `tests/test_layout_structure.py`,
+`requirements-docling.txt`, `run.ps1 -IncludeDocling`. Simplified
+`casemap_pipeline.segment_document_layered()` to call `detect_structure()`/
+`segment_document()` directly — same `(sections, {tier, confidence,
+tier_reason, stats})` return shape, so `casemap_service.py`, the report, and
+`tests/test_poc_structure_t4.py` (literal-tier-string contract test, never
+imported `docling`) needed no changes. Fixed a dangling comment in
+`requirements.txt` pointing at the deleted file. Full suite: 66 passed (was
+70 passed/1 skipped — the 4 mocked-Docling tests and 1 self-skipping real-PDF
+test are gone with the file).
+
 ## 2026-09-11 (74) — three more rhetorical-role models run for real via WSL; two platform issues genuinely fixed, none produce usable output
 
 Owner pushed back on (73)'s conclusion: the `opennyai` blocker looked like a

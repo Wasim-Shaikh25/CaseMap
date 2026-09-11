@@ -27,18 +27,11 @@
 
   Usage (from a PowerShell prompt, in the project root):
       .\run.ps1
-      .\run.ps1 -IncludeDocling   # also installs the optional, heavy (~1.5GB)
-                                  # Docling structure layer - see
-                                  # requirements-docling.txt's own header
-                                  # before using this; it has not been
-                                  # verified installed together with the
-                                  # mandatory NER chain above.
       .\run.ps1 -Port 9000        # run on a different port
       .\run.ps1 -NoBrowser        # don't auto-open the browser
 #>
 
 param(
-    [switch]$IncludeDocling,
     [switch]$NoBrowser,
     [int]$Port = 8756
 )
@@ -87,12 +80,6 @@ Write-Host "[+] Installing core + web app dependencies (first run can take sever
 Invoke-Checked "pip install -r requirements.txt"
 & $Py -m pip install -r (Join-Path $Root "requirements-webapp.txt") -q
 Invoke-Checked "pip install -r requirements-webapp.txt"
-
-if ($IncludeDocling) {
-    Write-Host "[+] -IncludeDocling passed - installing requirements-docling.txt (~1.5GB, optional structure layer) ..." -ForegroundColor Cyan
-    & $Py -m pip install -r (Join-Path $Root "requirements-docling.txt") -q
-    Invoke-Checked "pip install -r requirements-docling.txt"
-}
 
 # --- 3. mandatory NER model ----------------------------------------------
 Write-Host "[+] Checking mandatory OpenNyAI NER model (en_legal_ner_sm) ..." -ForegroundColor Cyan
