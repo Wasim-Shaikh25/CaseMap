@@ -9,7 +9,112 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 7 · **Fixed:** 11 · **Superseded:** 0
+**Open:** 7 · **Fixed:** 12 · **Superseded:** 0
+
+## F-20 — Three more rhetorical-role models actually run for real (two platform fixes worked); all three still unusable on real documents
+
+**Date:** 2026-09-11
+**One-liner:** Owner pushed back on F-19's addendum: the `opennyai` blocker
+was a platform/toolchain gap, not proof the model itself doesn't work —
+"can't we make it work, it's our platform that's lacking." That was the
+right instinct and worth honoring with real effort, not a shrug. Three more
+models were actually run end-to-end (not just researched): AllenNLP (dead,
+confirmed unfixable), Hier_BiLSTM_CRF (platform issue *fixed* via WSL — a
+real, working model), and InLegalBERT(i) (loads and runs cleanly). None of
+the three produce output worth combining with the existing phrase-matcher
+once tested against real judgments.
+
+**AllenNLP (the original OpenNyAI/`rhetorical-role-baseline` dependency):
+confirmed dead, not a version-pin fix.** Latest release (2.10.1) hard-pins
+`spacy<3.4`, which drags in `preshed<2.1` needing a source build, whose
+`setup.py` imports `distutils.msvccompiler` — removed from modern
+`setuptools` entirely. Not attempted further: this isn't a version choice,
+it's 2021-era tooling calling an API that no longer exists anywhere. AllenNLP
+'s own PyPI page says "maintenance mode... no longer adding new features or
+upgrading dependencies."
+
+**Hier_BiLSTM_CRF (the paper's own best model, F1 0.77): the platform issue
+was real, and WSL fixed it.** Its pretrained variant needs Facebook's real
+`sent2vec` (C++), whose build passes GCC-only flags (`-std=c++0x`,
+`-Wno-cpp`) that MSVC rejects — confirmed this is a Windows-vs-Linux gap,
+not a broken library, by building it clean under WSL/Ubuntu (`sudo apt
+install python3-venv build-essential python3-dev`, then
+`pip install git+https://github.com/epfml/sent2vec` — succeeded with zero
+patching). Cloned `Law-AI/semantic-segmentation` (the actual code this
+model's architecture comes from), downloaded the real checkpoint
+(`L-NLProc/LegalSeg_Hier_BiLSTM-CRF` on HF: `model_state4.tar`,
+`word2idx.json`, `tag2idx.json` — its `word2idx.json` confirms this
+checkpoint is the NON-pretrained variant, so `sent2vec` wasn't even
+ultimately needed for this specific checkpoint, but building it removed
+that as a variable). Three more real bugs found and fixed to get inference
+running at all:
+  1. `argparse`'s `type=bool` treats any non-empty string as `True` — passing
+     `--pretrained False` on the command line actually set it `True`.
+     Fix: omit the flag (default is already `False`).
+  2. `torch.load()`'s `weights_only=True` default (PyTorch 2.6+) rejects the
+     2019-era pickled checkpoint. Fix: `weights_only=False` (safe — official
+     paper checkpoint from the authors' own HF repo).
+  3. Checkpoint was saved from a CUDA device; this machine has none.
+     Fix: `map_location=torch.device('cpu')`.
+  4. A real bug in `Law-AI/semantic-segmentation`'s own code:
+     `Hier_LSTM_CRF_Classifier.__init__` builds its `LSTM_Sentence_Encoder`/
+     `LSTM_Emitter` submodules WITHOUT passing `device=self.device` through,
+     so they silently default to `'cuda'` regardless of the `--device cpu`
+     flag. Patched both constructor calls in `model/Hier_BiLSTM_CRF.py`.
+
+  **Result once it actually ran**: fed two real `testdata/*.txt` judgments,
+  once with a quick regex sentence-splitter (naive) and once with this
+  project's own abbreviation-aware sentence splitter
+  (`important_lines.py`'s `_raw_sentence_spans`/`_ends_with_abbreviation`/
+  `_merge_short_spans`, to rule out bad input as the cause). The better
+  splitter measurably helped — it correctly caught one real
+  `Arguments of Petitioner` the phrase-matcher's fixed cues would have
+  missed ("Counsel for the appellants urged that under this order
+  Bharatsingh is entitled to challenge...", no match in
+  `RHETORICAL_ROLE_CUES`) — but the model still collapsed to **almost
+  entirely "Facts" or "None"** across both full documents: zero
+  predictions for Issue, Arguments of Respondent, Reasoning, or Decision,
+  including on sentences that plainly are Reasoning ("Dilip Kumar's
+  conduct cannot be viewed with leniency and the High Court was right in
+  confirming the death sentence..." — this or similar sentences were
+  tagged `None`, not `Reasoning`). One correct catch in ~50 real sentences
+  is not enough signal to build on.
+
+**InLegalBERT(i) (`L-NLProc/LegalSeg_InLegalBERT`, plain `transformers`):
+loads cleanly, output looks close to random.** `BertForSequenceClassification.
+from_pretrained("law-ai/InLegalBERT", num_labels=7)` +
+`load_state_dict(safetensors, strict=True)` — zero missing/unexpected keys,
+confirming the architecture guess was exactly right. But real predictions on
+the same two documents look incoherent, not just weak: "The High Court
+confirmed the conviction and sentence of Dilip Kumar" (plainly Facts) →
+`Issue` at 0.85 confidence; "Payment of interim maintenance III." (a
+table-of-contents fragment) → `Arguments of Respondent` at 0.55. The HF repo
+ships only bare weight tensors, no `config.json`/label-mapping file, so the
+7-way label order (`Facts, Issue, Arguments of Petitioner, Arguments of
+Respondent, Reasoning, Decision, None`) had to be inferred from the paper's
+prose listing of the task's label set `Y` — this result casts real doubt on
+whether that inferred order matches their actual training-time integer
+encoding, and without their exact `train.csv`/label-encoding code there's no
+way to confirm it from outside. Not worth guessing further (5040 possible
+orderings).
+
+**Verdict: still not worth integrating, but for a fully verified reason
+this time, not an assumption.** Across five real attempts (`opennyai`,
+AllenNLP, Hier_BiLSTM_CRF, InLegalBERT(i), and F-19's own embedding
+fallback), two were genuine platform/toolchain gaps and one of those (WSL)
+was actually fixed — proving the "it's our platform, not the model" instinct
+right in that one case. But once each model that could actually run was
+tested against real judgments, none produced signal reliable enough to
+combine with the existing phrase-matcher (a hybrid only helps if the
+fallback beats honest silence; here it would inject confident wrong
+answers into cases the matcher currently — correctly — leaves untagged).
+`RHETORICAL_ROLE_CUES` stays on the plain phrase/fuzzy matcher.
+**Evidence**: `temp/2026-09-11-hier-bilstm-crf-poc/` (WSL venv + patched
+`Law-AI/semantic-segmentation` clone + checkpoint, never committed),
+`temp/2026-09-11-allennlp-rhetorical-role-poc/` (never committed), direct
+inference runs against `testdata/01_criminal_sc_dilip_kumar_sharma_v_mp.txt`
+and `testdata/03_matrimonial_sc_rajnesh_v_neha.txt` with full label-by-label
+output inspected by hand.
 
 ## F-19 — Tried and rejected: embedding-similarity fallback for `RHETORICAL_ROLE_CUES`
 
@@ -96,6 +201,12 @@ check, not active work). `RHETORICAL_ROLE_CUES` stays open on the plain
 phrase/fuzzy matcher. Python 3.13 was installed system-wide for this
 evaluation (harmless, isolated from the project's Python 3.11 `.venv`) and
 left in place in case a retry becomes worthwhile later.
+
+**Continued in F-20**: owner pushed back that the `opennyai` blocker looked
+like a platform gap, not a broken model, and asked to actually try fixing
+it rather than stop — that push led to AllenNLP, `Hier_BiLSTM_CRF`, and
+`InLegalBERT(i)` all being tried for real (two platform fixes genuinely
+worked), see F-20 for the full result.
 
 ## F-18 — `DENIAL_MARKERS`/`ASSERTION_MARKERS` fixed-phrase polarity missed real denials/assertions; added a dependency-parse signal alongside them
 

@@ -26,7 +26,23 @@ is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 73: evaluated `opennyai`'s real rhetorical-role model in an isolated Python 3.13 venv — blocked on an upstream `spacy-curated-transformers`/`thinc` build failure, not pursued further, see FINDINGS.md F-19's addendum)
+**Last updated:** 2026-09-11 (entry 74: three more rhetorical-role models run for real via WSL — two platform issues genuinely fixed, none produce usable output, see FINDINGS.md F-20)
+
+**2026-09-11 — Rhetorical roles: pushed further after (73), via WSL — real fixes, still no usable model.** Owner
+correctly pushed back that (73)'s `opennyai` blocker was a platform gap, not a broken model, and asked to actually
+try fixing it. AllenNLP (the original baseline's dependency) is confirmed genuinely dead — its own `spacy<3.4` pin
+needs a `distutils` API modern `setuptools` removed entirely, not a version choice. But Hier_BiLSTM_CRF (the
+LegalSeg paper's best model, F1 0.77) really was a platform issue: its `sent2vec` C++ dependency failed to build
+under Windows/MSVC (GCC-only flags) and built cleanly under WSL/Ubuntu with zero patching. Got the whole pipeline
+running after fixing 4 real bugs (an `argparse type=bool` footgun, PyTorch 2.6's new `weights_only=True` default,
+a CUDA-only checkpoint with no GPU here, and a genuine bug in the paper's own code where `device` never reached
+two submodules). Tested against 2 real judgments with this project's own sentence splitter — caught one real
+argument the phrase-matcher would have missed, but otherwise collapsed to near-all-Facts/None, missing every other
+role. InLegalBERT(i) (plain `transformers`, no platform issue) loaded perfectly but its predictions look close to
+random — the label order had to be inferred from the paper's prose (no label-mapping file shipped), and this
+result casts real doubt on whether that inference is right. Verdict: `RHETORICAL_ROLE_CUES` stays on the plain
+phrase/fuzzy matcher; the WSL fix path is documented in case a better-labeled checkpoint appears later. No
+changes to `src/` or the project's own `.venv`. Full writeup: `FINDINGS.md` F-20.
 
 **2026-09-11 — `opennyai`'s rhetorical-role model evaluated and blocked (upstream, not fixable here).** The
 "unconfirmed inference entrypoint" `opennyai_bridge.py:122` flagged turns out to be real:

@@ -4,6 +4,44 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (74) — three more rhetorical-role models run for real via WSL; two platform issues genuinely fixed, none produce usable output
+
+Owner pushed back on (73)'s conclusion: the `opennyai` blocker looked like a
+platform gap, not proof the model doesn't work, and asked to actually try
+fixing it. Right instinct — WSL/Ubuntu (already installed) has real GCC,
+sidestepping the whole MSVC-flag problem. Full writeup: `FINDINGS.md` F-20.
+
+1. **AllenNLP** (original OpenNyAI baseline dependency): confirmed dead, not
+   a version-pin issue — its own `spacy<3.4` pin needs `distutils.
+   msvccompiler`, removed from modern `setuptools`. Not pursued further.
+2. **Hier_BiLSTM_CRF** (the paper's best model, F1 0.77): **the platform fix
+   worked.** Built the real `sent2vec` (C++) clean under WSL after it failed
+   under MSVC on Windows. Found and fixed 4 real bugs to get inference
+   running (`argparse type=bool` footgun, PyTorch 2.6's new
+   `weights_only=True` default, a CUDA-only checkpoint on a CPU machine, and
+   a genuine bug in the paper's own code — `device` never passed through to
+   two submodules). Ran clean. Tested against 2 real `testdata/*.txt`
+   judgments with this project's own sentence splitter (to rule out bad
+   input): caught one real `Arguments of Petitioner` the phrase-matcher
+   would have missed, but otherwise collapsed to near-all-`Facts`/`None`,
+   zero Issue/Arguments of Respondent/Reasoning/Decision predictions across
+   both documents.
+3. **InLegalBERT(i)** (plain `transformers`, no platform issue at all):
+   loaded with zero missing/unexpected keys — architecture guess confirmed
+   exactly right. Real predictions on the same 2 documents look close to
+   random ("The High Court confirmed the conviction..." → `Issue` at 0.85;
+   a table-of-contents fragment → `Arguments of Respondent` at 0.55) — the
+   HF repo ships no label-mapping file, so the assumed label order may not
+   match their actual training encoding, and there's no way to confirm it
+   from outside their training code.
+
+Verdict: `RHETORICAL_ROLE_CUES` stays on the plain phrase/fuzzy matcher.
+Real, useful platform fixes (WSL + `sent2vec`) now exist as a documented
+path if a future, better-labeled checkpoint shows up. No changes to
+`src/`, `requirements*.txt`, or the project's own `.venv` — everything for
+this evaluation lived in `temp/2026-09-11-*-poc/`, never committed.
+`pytest`: unaffected, still 70 passed, 1 skipped.
+
 ## 2026-09-11 (73) — evaluated `opennyai`'s real rhetorical-role model; blocked on an upstream Python 3.13 build failure, not pursued further
 
 Owner asked to check whether `opennyaiorg/InRhetoricalRoles` (flagged in
