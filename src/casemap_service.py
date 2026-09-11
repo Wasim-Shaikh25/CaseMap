@@ -937,9 +937,13 @@ def process_document(path: str, name: str, ml_nlp, ocr_engine: str = "tesseract"
         # of its own. A dropped name never silently vanishes without
         # trace: party_tier/party_confidence below still reflect the
         # underlying extraction's own confidence regardless of what the
-        # judge did.
+        # judge did, and party_judge_dropped (below) carries exactly what
+        # was found and rejected, so the UI can show it instead of leaving
+        # the reader looking at an unexplained empty list.
         "parties": [{"name": p.name, "role": p.role, "confidence": p.role_confidence}
                     for p in party_result.parties if _judge_party_name(p.name)],
+        "party_judge_dropped": [{"name": p.name, "role": p.role}
+                                 for p in party_result.parties if not _judge_party_name(p.name)],
         "party_tier": party_result.tier,
         "party_confidence": party_result.confidence,
         "sections_cited": sorted(set(all_sections_cited)),

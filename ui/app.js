@@ -528,15 +528,31 @@ const App = {
       const det = document.createElement("details");
       det.className = "crowd-group";
       det.open = true;
-      const parties = (d.parties || []).map(p =>
-        `<span class="chip${unstable ? " chip-warn" : ""}">${esc(p.name)} <span class="muted">· ${esc(p.role)}</span></span>`).join("") ||
-        `<span class="muted">No parties parsed — cause-title shown as fallback fact.</span>`;
+      const dropped = d.party_judge_dropped || [];
+      let parties, note = "";
+      if ((d.parties || []).length) {
+        parties = d.parties.map(p =>
+          `<span class="chip${unstable ? " chip-warn" : ""}">${esc(p.name)} <span class="muted">· ${esc(p.role)}</span></span>`).join("");
+      } else if (dropped.length) {
+        // Extraction found candidate name(s), but the downstream judge
+        // rejected all of them as not confidently looking like real party
+        // names -- show what was found and rejected rather than leaving
+        // the reader looking at an empty list with no trace of why.
+        parties = dropped.map(p =>
+          `<span class="chip chip-warn">${esc(p.name)} <span class="muted">· ${esc(p.role)}</span></span>`).join("");
+        note = `<div class="party-warning">⚠ Found but not shown above: extraction identified
+             ${dropped.length === 1 ? "this candidate" : "these candidates"} but a confidence
+             check rejected ${dropped.length === 1 ? "it" : "them"} as not confidently looking
+             like a real party name. Verify against the source document.</div>`;
+      } else {
+        parties = `<span class="muted">No parties identified in this document.</span>`;
+      }
       const warning = unstable
         ? `<div class="party-warning">⚠ Low-confidence extraction on this document — the role
              classifier flagged its own output as unstable. Expect some of these to be section
              headings or stray phrases picked up as if they were party names, not just the real
              parties. Verify against the document before relying on this list.</div>`
-        : "";
+        : note;
       det.innerHTML = `<summary>${esc(shortDocName(d.name))}
           <span class="n">${unstable ? "⚠ unstable" : (d.party_tier || "")}</span></summary>
         <div class="crowd-body">${warning}<div class="chip-row">${parties}</div></div>`;
