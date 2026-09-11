@@ -4,6 +4,37 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (73) — evaluated `opennyai`'s real rhetorical-role model; blocked on an upstream Python 3.13 build failure, not pursued further
+
+Owner asked to check whether `opennyaiorg/InRhetoricalRoles` (flagged in
+`opennyai_bridge.py:122` as an "unconfirmed inference entrypoint") actually
+has a working, installable API now, and approved installing Python 3.13
+(`winget install Python.Python.3.13`, isolated from the project's Python
+3.11 `.venv`) to evaluate it in a throwaway venv first.
+
+Found: yes, `pip install opennyai` + `Pipeline(components=['Rhetorical_Role'])`
+is real and documented — but it needs Python >=3.13 (the Python-3.11-
+compatible release hard-pins a spaCy version that conflicts with this
+project's mandatory `en_legal_ner_sm` spaCy 3.8.16 pin either way). Set up
+`temp/2026-09-11-opennyai-rhetorical-role-poc/venv_opennyai/` (never
+committed) on the new Python 3.13 and tried installing it there.
+
+**Blocked**: `spacy-curated-transformers` (a hard runtime dependency of
+`Rhetorical_Role`, not optional — it loads `en_core_web_trf` for internal
+preprocessing) requires `thinc>=9.0`, whose own Cython source fails to
+compile under Python 3.13's toolchain on this machine. Every other declared
+dependency (torch, transformers, spacy-transformers, pytorch-transformers)
+installed cleanly in isolation — this is narrowly a `spacy-curated-
+transformers`/`thinc` upstream build problem, not a broader Python 3.13
+issue, and not something fixable from this project's side. `opennyai` is
+also still labeled "Pre-Alpha" on PyPI.
+
+Verdict: not viable right now. `RHETORICAL_ROLE_CUES` stays on the plain
+phrase/fuzzy matcher. No changes to the project's own `requirements*.txt`
+or `.venv` — Python 3.13 stays installed system-wide (harmless, isolated)
+in case a future `opennyai` release fixes this. Full writeup in
+`FINDINGS.md` F-19's addendum.
+
 ## 2026-09-11 (72) — provision lookup gets test coverage; rhetorical-role embedding fallback tried and rejected; Qwen3-vs-MiniLM decision closed
 
 Owner asked to tackle the two remaining "what's next" items (rhetorical-role

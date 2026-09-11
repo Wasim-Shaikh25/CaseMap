@@ -26,7 +26,20 @@ is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 72: provision-lookup test coverage added, rhetorical-role embedding fallback tried and rejected after real-data testing, Qwen3-vs-MiniLM decision closed — see FINDINGS.md F-19 and F-15)
+**Last updated:** 2026-09-11 (entry 73: evaluated `opennyai`'s real rhetorical-role model in an isolated Python 3.13 venv — blocked on an upstream `spacy-curated-transformers`/`thinc` build failure, not pursued further, see FINDINGS.md F-19's addendum)
+
+**2026-09-11 — `opennyai`'s rhetorical-role model evaluated and blocked (upstream, not fixable here).** The
+"unconfirmed inference entrypoint" `opennyai_bridge.py:122` flagged turns out to be real:
+`pip install opennyai` + `Pipeline(components=['Rhetorical_Role'])` is a documented, working API — but it requires
+Python >=3.13. Owner approved installing Python 3.13 system-wide (isolated from the project's Python 3.11
+`.venv`) specifically to evaluate it in a throwaway venv (`temp/2026-09-11-opennyai-rhetorical-role-poc/`, never
+committed). Blocked there: `spacy-curated-transformers`, a hard runtime dependency (loads `en_core_web_trf` for
+internal preprocessing, not optional), needs `thinc>=9.0`, and `thinc`'s own Cython source fails to compile under
+Python 3.13's toolchain on this machine — an upstream build problem, not a version-pin choice we can fix. Every
+other dependency (torch, transformers, spacy-transformers) installed fine in isolation, so this is narrowly
+`spacy-curated-transformers`/`thinc`'s fault. `opennyai` is also still "Pre-Alpha" on PyPI. Verdict: not viable
+right now, not pursued further. `RHETORICAL_ROLE_CUES` stays on the plain phrase/fuzzy matcher, unchanged. No
+changes to the project's own `requirements*.txt` or `.venv`.
 
 **2026-09-11 — Three items closed: test coverage, a rejected experiment, and a long-open decision.**
 `tests/test_provision_lookup.py` (8 new tests, fake network responses) closes the one gap noted in F-17 — full

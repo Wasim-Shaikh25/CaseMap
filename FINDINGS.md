@@ -56,6 +56,47 @@ unconfirmed inference entrypoint), not another parse-based generalization.
 `scripts/tune_rhetorical_embedding.py` kept as evidence of what was tried
 and why it didn't work, same as the Qwen3-vs-MiniLM comparison scripts.
 
+**Addendum, 2026-09-11: the "unconfirmed inference entrypoint" is now
+confirmed — and confirmed broken on this machine.** `opennyaiorg/
+InRhetoricalRoles` does have a real, documented, pip-installable package
+(`pip install opennyai`, `Pipeline(components=['Rhetorical_Role'])`),
+resolving `opennyai_bridge.py:122`'s open question about whether a real
+entrypoint exists. It does — but it is not a small model (pulls in
+`torch`+`transformers`, self-labeled "Development Status :: 2 - Pre-Alpha"
+on PyPI) and **requires Python >=3.13**; the version that supports Python
+3.11 (`0.0.12`) hard-pins `spacy>=3.2.2,<3.3.0`, directly conflicting with
+this project's own mandatory spaCy **3.8.16** pin
+(`docs/requirements/2026-09-10-wire-opennyai-ner/`). Owner approved
+installing Python 3.13 (via `winget install Python.Python.3.13`, isolated
+from the existing Python 3.11/`.venv`) specifically to evaluate this in a
+throwaway venv (`temp/2026-09-11-opennyai-rhetorical-role-poc/
+venv_opennyai/`, never committed) before deciding whether to upgrade the
+whole project.
+
+**Result: hard blocked, not a fixable version pin.** `pip install opennyai`
+fails building `spacy-curated-transformers`'s own transitive dependency
+chain: it needs `thinc>=9.0`, whose Cython source (`thinc/backends/
+numpy_ops.pyx`) does not compile under Python 3.13's toolchain/Cython
+version on this machine (`Cython.Compiler.Errors.CompileError`). This is
+not a workaround-able "wrong version selected" problem — it's `thinc` 9.0's
+own C-extension source failing to build, an upstream compatibility gap,
+consistent with `opennyai` 0.0.15 being three weeks past a major rewrite
+(Python 3.8→3.13 jump between PyPI releases 0.0.12 and 0.0.13) and still
+labeled Pre-Alpha. Confirmed `spacy-curated-transformers` is NOT optional
+at runtime — `Pipeline(components=['Rhetorical_Role'])` requires it to load
+`en_core_web_trf` for its own internal preprocessing; every other declared
+dependency (torch, transformers, spacy-transformers, pytorch-transformers,
+etc.) installed and imported cleanly on Python 3.13 in isolation, so this is
+narrowly `spacy-curated-transformers`'s fault, not a broader Python-3.13
+problem.
+
+**Verdict: do not pursue further right now.** Re-evaluate only if a future
+`opennyai`/`spacy-curated-transformers` release fixes this (worth a periodic
+check, not active work). `RHETORICAL_ROLE_CUES` stays open on the plain
+phrase/fuzzy matcher. Python 3.13 was installed system-wide for this
+evaluation (harmless, isolated from the project's Python 3.11 `.venv`) and
+left in place in case a retry becomes worthwhile later.
+
 ## F-18 — `DENIAL_MARKERS`/`ASSERTION_MARKERS` fixed-phrase polarity missed real denials/assertions; added a dependency-parse signal alongside them
 
 **Date:** 2026-09-11
