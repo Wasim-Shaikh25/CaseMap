@@ -255,6 +255,39 @@ def _ocr_surya(img, lang: str) -> dict:
 # STAGE 1 — PAGE-PRESERVING EXTRACTION
 # ---------------------------------------------------------------------------
 
+# Running footer on Indian court e-filings: "<case caption> <no.>/<year> Page
+# <n> of <total>", e.g. "W.P.(CRL) 793/2017 Page 92 of 122". PyMuPDF's "text"
+# reading order interleaves this with body text at the page boundary rather
+# than keeping it on its own line, so it fuses onto whatever sentence starts
+# or ends there (e.g. "...norms required..." becomes "W.P.(CRL) 793/2017 Page
+# 92 of 122 norms required..."). Stripped as a unit, not line-anchored.
+_PAGE_FOOTER_RE = re.compile(
+    r"\b[A-Z][A-Za-z.]{0,3}(?:\.[A-Z][A-Za-z.]{0,3}){0,3}\s*"
+    r"\(?[A-Z]{0,6}\)?\s*\d{1,6}\s*/\s*\d{4}\s+Page\s+\d+\s+of\s+\d+\b\.?",
+    re.I,
+)
+
+# E-signature stamp ("Digitally Signed By:KESHAV", or bare "Digitally
+# Signed") -- a separate text object outside normal reading flow that
+# PyMuPDF injects mid-paragraph on digitally signed filings, e.g. "...fulfil
+# all Digitally Signed" / "...Rule 16 Digitally Signed". Not prose in any
+# real judgment, safe to strip unconditionally.
+_DIGITAL_SIGNATURE_RE = re.compile(
+    r"\s*Digitally\s+Signed(?:\s+By\s*:?\s*[A-Za-z][A-Za-z .]*)?", re.I,
+)
+
+
+def _strip_page_furniture(text: str) -> str:
+    """Remove running footers and e-signature stamps before they can fuse
+    onto real sentences (see regexes above). Runs once per page, at the
+    earliest extraction point, so every downstream consumer (chronology,
+    key points, provisions, entities) sees clean text.
+    """
+    text = _PAGE_FOOTER_RE.sub(" ", text)
+    text = _DIGITAL_SIGNATURE_RE.sub(" ", text)
+    return text
+
+
 def classify_page(page, raw_text: str) -> str:
     """Three-way classification, not a binary needs_ocr flag.
 
@@ -298,6 +331,8 @@ def extract_pages(pdf_path: str, ocr_engine: str = "paddle",
             words = r["words"]
         else:
             text = raw_text
+
+        text = _strip_page_furniture(text)
 
         pages.append({
             "document": os.path.basename(pdf_path),
