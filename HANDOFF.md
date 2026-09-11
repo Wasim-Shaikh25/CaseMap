@@ -326,7 +326,8 @@ See `FORBIDDEN.md` in full. The ones that bind day to day:
 ## 7. Open items — summary
 
 See §1's tables for the authoritative state of all 12 requirement folders and 13
-findings. Remaining unblocked pipeline work:
+findings. Remaining unblocked pipeline work (as of this section's last edit,
+2026-09-10):
 1. `structure-and-embedding-layers` T3 — Docling structure detection is proven
    (F-10) but still not installed by default; wiring it into the actual `.venv`
    default pipeline (vs. evaluation-only in a side venv) needs a dated owner
@@ -340,6 +341,49 @@ entry 40 — no longer open.
 
 `CaseMap_AGENT_HANDOFF.md` §7 ("Open gaps, ordered by value") is the pre-governance
 open-items list — still live, not yet transcribed into `FINDINGS.md`.
+
+**Correction, 2026-09-11 (CHANGELOG 66) — this section had drifted, item by item:**
+
+- **Item 1 above (T3) is half-resolved, not open.** The `sentence_transformers`
+  path WAS run (`FINDINGS.md` F-10's 2026-09-10 update): Qwen3-Embedding-0.6B
+  loads and separates same-matter vs. unrelated document pairs by roughly
+  double the margin of the current default (~0.41 vs. ~0.24 spread). What's
+  still genuinely open is only the **adoption decision** — `EMBED_MODEL` in
+  `src/casemap_service.py` is still `"all-MiniLM-L6-v2"`; switching the
+  pipeline's default needs the owner's explicit sign-off per §10, not more
+  evaluation. `docs/requirements/2026-09-09-structure-and-embedding-layers/
+  TRACKER.md`'s "T3 — Not started" row is itself stale and should read
+  "Evaluated, decision pending" — left as-is here rather than silently
+  rewritten, per this project's own append-only convention for tracked state.
+- **`docs/requirements/2026-09-09-verbatim-fallback-nodes/` is fully done**
+  (its own `TRACKER.md`: T1-T5 all `Done`, dated 2026-09-09/10) — it was never
+  actually an open item by the time this section was last written, just not
+  reflected here.
+- **The Tier 1 blocking item (mandatory `en_legal_ner_sm`, `STATUS.md`
+  2026-09-09) is now closed.** The model is installed in this project's own
+  `.venv` (not just a side venv) and wired into `get_ml_nlp()` in
+  `src/casemap_service.py` — confirmed active (`ml_layer: active`) on every
+  real run. See `STATUS.md`'s 2026-09-11 update for the full verification.
+- **The `document_profile.extract_parties_layered()` header-noise bug**
+  flagged as "not yet its own requirements folder" (`STATUS.md` 2026-09-10)
+  already had one, same day: `docs/requirements/2026-09-10-party-ladder-
+  header-furniture/` (F-9). Verified clean across all 22 `testdata/*.txt`
+  docs, both the regex ladder and the ML hybrid path.
+- **The project is now a git repository**, pushed to
+  `https://github.com/Wasim-Shaikh25/CaseMap` — see the correction to §10
+  below; this was previously reserved for the owner and has now been done by
+  the owner's explicit instruction.
+- **`server/app.py` + `ui/` are the shipped product, not a stopgap.** This
+  section's item 2 (§9 follow-ups) and the rest of this file below still
+  describe 2026-09-10 state; the `casemap_service.py` extraction (CHANGELOG
+  63), the drawer highlight fix (CHANGELOG 64), and the reprocess/rhetorical-
+  role/word-amounts features (CHANGELOG 62) all landed after this file was
+  last substantially rewritten and are **not** reflected in §§1-6, 8-9 below.
+  Treat those sections as historical background, not current state — `STATUS.md`
+  and `CHANGELOG.md` are current; this file's body has not been fully rewritten
+  to match (a full rewrite, per this project's own precedent — see the
+  2026-09-10 entries in `STATUS.md` — is a bigger task than this correction
+  pass; flagging it here rather than silently doing a partial one).
 
 ---
 
@@ -384,7 +428,12 @@ Do not build UI (§0).
 
 - Widening `docs/spec/SCOPE.md`'s boundary (no generative LLM in the core).
 - Making OpenNyAI's Legal NER optional/non-mandatory again.
-- `git init` for this project (owner will do it themselves).
+- ~~`git init` for this project (owner will do it themselves).~~ **Done,
+  2026-09-11, by explicit owner instruction:** initialized and pushed to
+  `https://github.com/Wasim-Shaikh25/CaseMap`, with `.gitignore` excluding
+  `.venv/`, `casemap.db`, OCR/pytest caches, and — importantly — `temp/`
+  (which holds the owner's own real, personal petition document; that must
+  never enter version control, see `FORBIDDEN.md`).
 - Adopting the two-judge law / global trial counter (declined at governance init).
 - **Adopting Docling, Qwen3-Embedding, or any other layer-additions-research tool as
   a permanent `src/`/`requirements.txt` dependency** — validated as POCs, not

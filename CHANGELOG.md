@@ -4,6 +4,46 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (66) — one-command setup+run script; README fully detailed; open-items pass across HANDOFF/FINDINGS/TRACKER
+
+Owner asked for all open items/findings to be marked down with proper
+comments, and for the README to detail how to run the project, including one
+script that installs all dependencies and runs both frontend and backend.
+
+1. **New `run.ps1`** — one PowerShell script that creates `.venv` if missing,
+   installs `requirements.txt` + `requirements-webapp.txt`, installs the
+   mandatory `en_legal_ner_sm` model and `en_core_web_sm` if not already
+   present, checks (warns, does not fail) for the system Tesseract OCR
+   binary, then starts `server/app.py` on port 8756. There's only one process
+   to run either way — `server/app.py` mounts `ui/` as static files, so the
+   backend already serves the frontend; the script makes that one command.
+   Flags: `-Port`, `-NoBrowser`, `-IncludeDocling` (optional heavy structure
+   layer). Verified end-to-end against the existing `.venv` (idempotent —
+   detects already-installed models, doesn't reinstall) and confirmed
+   `/api/health` responds after it starts the server. One real bug fixed
+   while writing it: `$ErrorActionPreference = "Stop"` at the top made a
+   harmless spaCy stderr warning during the model-presence check abort the
+   whole script (PowerShell treats native-process stderr as a terminating
+   error under "Stop") — removed the global setting, check `$LASTEXITCODE`
+   explicitly after the installs that actually matter instead.
+2. **`README.md` rewritten** with a full quick-start (`run.ps1`), a by-hand
+   fallback for non-Windows/troubleshooting, a "using the app" walkthrough,
+   test-running instructions, and a one-paragraph architecture summary. The
+   old "run it" section still described `poc_run.py` as drifted behind the
+   web pipeline — stale since entry 63's refactor; corrected.
+3. **Open-items pass** — `FINDINGS.md` F-15 (new) consolidates what's
+   genuinely still open (Qwen3-Embedding adoption decision; Docling not
+   installed in this `.venv`; `important_lines.py` needs a second real
+   petition) versus what several docs still called "open" but code proves
+   is already resolved (Tier 1's NER blocking item; the `extract_parties_
+   layered()` header-furniture bug; the verbatim-fallback-nodes and
+   structure-T3 requirement folders). `HANDOFF.md` §7 got a dated correction
+   block (its own historical text left intact, per this project's
+   conventions) and §10's `git init` item marked done. `docs/requirements/
+   2026-09-09-structure-and-embedding-layers/TRACKER.md`'s stale "T3 — Not
+   started" row corrected in place (that file is living state, not
+   append-only history).
+
 ## 2026-09-11 (65) — verified two "still open" STATUS.md items are actually already done; no code changed
 
 Owner asked to check whether `en_legal_ner_sm` (the mandatory OpenNyAI NER

@@ -9,7 +9,76 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 7 · **Fixed:** 7 · **Superseded:** 0
+**Open:** 8 · **Fixed:** 7 · **Superseded:** 0
+
+## F-15 — Consolidated open-items pass: what's genuinely still open vs. what earlier notes only claimed was
+
+**Date:** 2026-09-11
+**One-liner:** Owner asked to check on the `en_legal_ner_sm` mandatory-model
+status and a flagged `document_profile` bug, then asked for all open items to
+be marked down with proper comments. Both checks turned out to already be
+resolved; this entry is the resulting sweep of every place in the docs that
+called something "open" or "not started," verified directly against current
+code rather than trusted at face value.
+
+**Genuinely open (real, unresolved):**
+
+1. **Qwen3-Embedding-0.6B adoption decision.** Evaluated for real (F-10):
+   separates same-matter document pairs from unrelated ones by roughly double
+   the margin of the current default (~0.41 vs. ~0.24 spread, small sample).
+   `EMBED_MODEL` in `src/casemap_service.py:49` is still `"all-MiniLM-L6-v2"`
+   (confirmed by direct read, 2026-09-11). This is an **owner decision**
+   (`HANDOFF.md` §10), not an engineering task — do not flip the default
+   without it.
+2. **Docling is not installed in this project's own `.venv`.** Confirmed
+   directly: `import docling` fails there (2026-09-11). It's proven to work
+   on real digital + scanned corpora in a *separate* evaluation venv (F-4,
+   F-10) but was deliberately never made a `requirements.txt` pin — see that
+   file's own header for why (untested combined with the mandatory
+   `spacy==3.8.16`/`en_legal_ner_sm` chain). `layout_structure.py` degrades
+   to a non-Docling tier without it; this is a known, accepted state, not a
+   bug. `run.ps1 -IncludeDocling` (added this session) installs it on
+   request.
+3. **`important_lines.py` model comparison needs a second real petition.**
+   `testdata/`/`real_pdfs/` still have no petition-shaped filing (F-13) — the
+   one comparison run exists only against the owner's own BCI petition
+   (kept out of the repo entirely, `temp/`-only, never committed).
+
+**Checked and found already resolved (docs said "open," code says otherwise):**
+
+1. **Tier 1's mandatory-NER blocking item** (`STATUS.md`, originally
+   2026-09-09) — closed. `en_legal_ner_sm` is installed in this project's own
+   `.venv` and wired into `get_ml_nlp()`/`process_document()`
+   (`src/casemap_service.py`); every real run this session logged `ml_layer:
+   active`. `allow_degraded=True` is a graceful-fallback flag for machines
+   without the model, not a sign it's running in practice. See `STATUS.md`'s
+   2026-09-11 correction.
+2. **`document_profile.extract_parties_layered()` header-furniture bug**
+   (`STATUS.md` 2026-09-10, described as "not yet its own requirements
+   folder") — already had one the same day:
+   `docs/requirements/2026-09-10-party-ladder-header-furniture/` (F-9).
+   Verified directly against all 22 `testdata/*.txt` docs plus the ML hybrid
+   path with the real model loaded: zero `Author:`/`CITATION`/`CITATOR`
+   names leak in as parties.
+3. **`docs/requirements/2026-09-09-verbatim-fallback-nodes/`** — its own
+   `TRACKER.md` shows T1-T5 all `Done` (2026-09-09/10). An older `STATUS.md`
+   line calling it "ready for implementation, neither started" was already
+   stale by the time it was written relative to later same-day work; left
+   as historical record there (append-only), corrected via a pointer in
+   `HANDOFF.md` §7 instead.
+4. **`structure-and-embedding-layers` T3** (Qwen via `sentence_transformers`)
+   — its own `TRACKER.md` said "Not started"; it was actually run and
+   produced the real result in item 1 above. Tracker row corrected in place
+   (2026-09-11) since `TRACKER.md` files are living state, not append-only
+   history, unlike this register.
+
+**Status:** Open (items 1-3 above are the real remaining work; everything
+else in this entry was a documentation correction, not a code change).
+**Evidence:** `HANDOFF.md` §7 correction (CHANGELOG 66); `STATUS.md`
+2026-09-11 entries; `docs/requirements/2026-09-09-structure-and-embedding-
+layers/TRACKER.md`; direct verification commands run this session (`spacy.
+load('en_legal_ner_sm')`, `import docling`, `extract_parties_layered()`
+against all 22 `testdata/*.txt`).
 
 ## F-14 — Full-repo audit: not single-petition (India-specialised); 2 of 4 unused features earned wiring, 2 rejected on evidence; a bare-comma amount bug
 

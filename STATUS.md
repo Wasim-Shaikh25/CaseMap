@@ -26,7 +26,7 @@ is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 65: confirmed en_legal_ner_sm mandatory NER model already wired + active, and the F-9 party-furniture bug already fixed — two stale STATUS.md claims corrected, no code changed)
+**Last updated:** 2026-09-11 (entry 66: one-command run.ps1 setup+launch script added; README fully detailed; FINDINGS.md F-15 consolidates all genuinely-open items project-wide)
 
 ## Current phase
 
@@ -225,3 +225,34 @@ falls back to the old search when they don't line up (the one real case:
 event sources from the insolvency bundle): 12 hit the precise path, 4 fall
 back correctly, 0 no-ops. Full suite still 62 passed / 1 skipped. See
 `CHANGELOG.md` entry 64 — F-14's punch list is now fully closed.
+
+**2026-09-11 (verification pass, no code changed) — two items this file called
+"still open" turned out to already be resolved.** (1) `en_legal_ner_sm`: this
+file's 2026-09-09 entry above said it had "not been wired into
+`opennyai_bridge.py`/`poc_run.py` in this working directory" — that's stale.
+It's installed in this project's own `.venv` and `get_ml_nlp()`/
+`process_document()` (`src/casemap_service.py`) load it on every run; every
+server boot / CLI run / test this session logged `ml_layer: active`. Both
+paragraphs above are corrected in place. (2) The `document_profile.
+extract_parties_layered()` header-noise bug flagged below as "not yet its own
+requirements folder" already had one, the same day (F-9,
+`docs/requirements/2026-09-10-party-ladder-header-furniture/`) — verified
+clean across all 22 `testdata/*.txt` docs and the ML hybrid path. See
+`CHANGELOG.md` entry 65 and `FINDINGS.md` F-15.
+
+**2026-09-11 (one-command run script + docs pass) — `run.ps1` added;
+`README.md` fully detailed; remaining open items consolidated in one place.**
+`run.ps1` creates `.venv` if missing, installs both requirement files, installs
+the mandatory NER model + `en_core_web_sm` if absent, checks for system
+Tesseract (warns, doesn't fail, if missing — only scanned PDFs need it), then
+starts `server/app.py` — which already serves `ui/` as static files, so this
+one script and one process is the whole app, frontend included. Verified
+end-to-end (idempotent against the existing `.venv`; `/api/health` responds
+after start). `README.md` rewritten with a real quick-start, a by-hand
+fallback, a using-the-app walkthrough, and a fixed architecture summary (the
+old copy still described `poc_run.py` as drifted behind the web pipeline —
+stale since entry 63). `FINDINGS.md` F-15 is now the one place listing what's
+genuinely still open project-wide (Qwen3-Embedding adoption decision; Docling
+not installed in this `.venv`; `important_lines.py` needs a second real
+petition) versus what several docs still called open but code already
+resolved. See `CHANGELOG.md` entry 66.
