@@ -27,7 +27,7 @@ not re-add it without re-reading `FINDINGS.md` F-21 first; `real_pdfs/` exists (
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 79: counsel-report PDF statute-text styling fixed, see FINDINGS.md F-24 addendum)
+**Last updated:** 2026-09-11 (entry 80: deployed to Render, found free tier OOM-crashes under real load, moving to a VPS; versioning + per-model health status + startup model warm-load added)
 
 **2026-09-11 — Counsel-report PDF: fixed statute text rendering unstyled (same-day regression from entry 78).**
 Owner asked to verify the "Download counsel report (PDF)" output (`window.print()` on a self-contained HTML document

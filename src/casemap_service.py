@@ -31,6 +31,7 @@ import traceback
 from collections import Counter
 
 import opennyai_bridge as bridge
+import casemap_pipeline as pipeline
 from document_profile import extract_parties_hybrid, party_result_to_fallback_event
 from casemap_pipeline import (
     extract_pages, segment_document_layered, build_section_text,
@@ -214,13 +215,45 @@ def _judge_party_name(name: str) -> bool:
     return covered >= 0.7 * len(judge_name)
 
 
+# Human-readable model identifiers, surfaced in layer_status() so a health
+# check confirms not just "loaded" but *which* model/version is running --
+# distinguishing e.g. a stale VPS deploy from the one just pushed is
+# otherwise invisible from the outside.
+MODEL_NAMES = {
+    "ml_layer": "opennyai/en_legal_ner_sm 3.2.0",
+    "boundary_judge": "segment-any-text/sat-3l-sm",
+    "party_judge": "urchade/gliner_small-v2.1",
+    "embedding_layer": EMBED_MODEL,
+}
+
+
 def layer_status() -> dict:
     """Health snapshot for the ML layers. Forces the ML NER to load (so its
-    status is accurate) but reports SaT/GLiNER only if already touched."""
+    status is accurate) but reports the optional judges/embedder only if
+    already touched -- unless warm_all_models() was run at startup, in which
+    case every layer here is already loaded and this is a cheap read."""
     nlp = get_ml_nlp()
-    return {"status": "ok", "ml_layer": "active" if nlp is not None else "degraded",
+    embed_loaded = EMBED_MODEL in pipeline._EMBED_MODELS
+    return {"status": "ok",
+            "ml_layer": "active" if nlp is not None else "degraded",
             "boundary_judge": "active" if _SAT_MODEL not in ("_unloaded", None) else "unloaded",
-            "party_judge": "active" if _GLINER_MODEL not in ("_unloaded", None) else "unloaded"}
+            "party_judge": "active" if _GLINER_MODEL not in ("_unloaded", None) else "unloaded",
+            "embedding_layer": "active" if embed_loaded else "unloaded",
+            "models": MODEL_NAMES}
+
+
+def warm_all_models() -> dict:
+    """Force every lazy model layer to load right now, instead of each one
+    paying its own load cost (and memory spike) on whichever request happens
+    to touch it first. Meant for hardware with headroom to spare at boot --
+    a VPS, not Render free tier's 512MB, which OOM-crashed mid-request when
+    the judges + embedder loaded lazily under real traffic (2026-09-11).
+    See server/app.py's WARM_MODELS_ON_START."""
+    get_ml_nlp()
+    _get_sat_model()
+    _get_gliner_model()
+    pipeline.warm_similarity_model(EMBED_MODEL)
+    return layer_status()
 
 
 # ---------------------------------------------------------------------------

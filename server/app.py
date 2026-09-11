@@ -41,7 +41,40 @@ import casemap_service as service
 
 ALLOWED_EXT = {".pdf", ".docx", ".doc", ".txt"}
 
+_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+
+
+def _read_version() -> str:
+    try:
+        with open(os.path.join(_ROOT, "VERSION")) as f:
+            return f.read().strip()
+    except OSError:
+        return "unknown"
+
+
+APP_VERSION = _read_version()
+# Render sets RENDER_GIT_COMMIT automatically; a bare VPS checkout has none,
+# so this is best-effort provenance, not a hard requirement.
+GIT_COMMIT = os.environ.get("RENDER_GIT_COMMIT", "")[:12] or "unknown"
+
+# Load every ML layer (NER, SaT boundary judge, GLiNER party judge, MiniLM
+# embedder) once at process startup instead of on whichever request happens
+# to touch each one first. On always-on hardware with RAM to spare (a VPS)
+# this means the first real request isn't the one that pays every model's
+# load latency AND memory spike at once -- the exact combination that
+# OOM-crashed the Render free-tier instance mid-request (2026-09-11).
+# Default on; set WARM_MODELS_ON_START=false to keep the old lazy behavior
+# (e.g. a memory-constrained host where failing fast at boot isn't wanted).
+WARM_MODELS_ON_START = os.environ.get("WARM_MODELS_ON_START", "true").strip().lower() not in (
+    "0", "false", "no")
+
 app = FastAPI(title="CaseMap backend")
+
+
+@app.on_event("startup")
+async def _warm_models_on_start():
+    if WARM_MODELS_ON_START:
+        service.warm_all_models()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://127.0.0.1:8756", "http://localhost:8756"],
@@ -63,7 +96,10 @@ async def _no_cache_ui_assets(request, call_next):
 
 @app.get("/api/health")
 def health():
-    return service.layer_status()
+    status = service.layer_status()
+    status["version"] = APP_VERSION
+    status["commit"] = GIT_COMMIT
+    return status
 
 
 @app.post("/api/process")

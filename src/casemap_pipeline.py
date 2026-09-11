@@ -1200,6 +1200,22 @@ def make_similarity_fn(model_name: str = "all-MiniLM-L6-v2"):
     return fn
 
 
+def warm_similarity_model(model_name: str = "all-MiniLM-L6-v2") -> bool:
+    """Force `model_name` into `_EMBED_MODELS` now, instead of waiting for
+    the first score_pair() call to pay the load cost. `make_similarity_fn()`
+    doesn't touch the model until its returned `fn` actually runs, so a
+    caller that wants to warm the process at startup (server/app.py) needs
+    this instead. Returns False (same degrade-to-entity+temporal-only path
+    `fn()` already has) if sentence-transformers isn't installed."""
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError:
+        return False
+    if model_name not in _EMBED_MODELS:
+        _EMBED_MODELS[model_name] = SentenceTransformer(model_name)
+    return True
+
+
 # ---------------------------------------------------------------------------
 # STAGE 7 — OUTPUT (crash bugs fixed)
 # ---------------------------------------------------------------------------

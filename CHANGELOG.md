@@ -4,6 +4,45 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (80) — deployed to Render (free tier, then found it OOM-crashes mid-request); added a VERSION file, commit hash, and per-model status to `/api/health`; added an opt-out startup warm-load for all ML layers
+
+Deployed to Render as a web service (`casemap`, https://casemap.onrender.com) via the
+Render MCP. First build defaulted to Python 3.14 (nothing pinned a version) and failed:
+`en_legal_ner_sm`'s old `spacy`/`blis` dependency chain can't compile `blis` from source
+on 3.14 (Cython/GIL incompatibility, no prebuilt wheel). Fixed by setting
+`PYTHON_VERSION=3.11.9` (the version this project is actually verified against — see
+`requirements.txt`'s own header). Rebuild succeeded and the service came up. A real
+`/api/process` call then silently killed and restarted the instance mid-request — a
+classic OOM-kill signature (no traceback, no log line, just a restart) — confirming the
+free-tier-RAM risk flagged before deploying: `sentence-transformers` + `gliner` +
+`wtpsplit-lite` all loading lazily on the first real request, on top of the already-
+loaded `en_legal_ner_sm`, exceeds free tier's 512MB. The owner decided to buy a VPS
+(~4GB RAM) instead of upgrading the Render plan.
+
+While diagnosing this, two gaps became visible from the outside: `/api/health` couldn't
+say *which* model/version was actually running (useful the moment more than one
+environment — local, Render, a future VPS — exists), and every ML layer loaded lazily
+on whichever request touched it first, meaning the first real user on a fresh boot pays
+every model's load latency and memory spike at once (the same shape of problem that
+just OOM-killed the Render instance, though there the problem was capacity, not timing).
+Fixed both:
+
+  - New `VERSION` file at repo root (`1.0.0`); `server/app.py` reads it and reports it
+    plus `RENDER_GIT_COMMIT` (when set) on `/api/health`.
+  - `casemap_service.py`'s `layer_status()` now returns a `models` dict naming exactly
+    which model backs each layer (`en_legal_ner_sm 3.2.0`, `sat-3l-sm`,
+    `gliner_small-v2.1`, `all-MiniLM-L6-v2`), not just active/unloaded.
+  - New `casemap_service.warm_all_models()` (calls `casemap_pipeline.py`'s new
+    `warm_similarity_model()` for the embedder alongside the three existing lazy
+    loaders) and a FastAPI startup hook in `server/app.py` that calls it by default —
+    opt out with `WARM_MODELS_ON_START=false` for a host where failing fast at boot
+    isn't wanted. On always-on hardware with RAM to spare (a VPS, not Render free),
+    this means model-load cost is paid once at boot, not on the first user's request.
+
+Verified locally: `warm_all_models()` loads all four layers successfully in ~28s
+(`.venv`, real network), full test suite still 83/83 passing, `/api/health` output
+inspected before and after. Not yet re-verified against the eventual VPS.
+
 ## 2026-09-11 (79) — counsel-report PDF: fixed statute text rendering unstyled (F-24 regression, same day)
 
 Owner asked to verify the "Download counsel report (PDF)" output before
