@@ -1171,6 +1171,7 @@ def extract_parties_hybrid(text: str, filename: str = "", *,
     meta_base = {"profile": profile.id, "profile_score": score,
                  "ml_layer": "active" if nlp is not None else "degraded"}
 
+    ml_single_side_fallback: Optional[PartyResult] = None
     if nlp is not None:
         ml_parties, ml_meta = extract_parties_ml(text, nlp)
         if ml_parties:
@@ -1179,8 +1180,13 @@ def extract_parties_hybrid(text: str, filename: str = "", *,
             if not refined:
                 pass  # furniture-only ML hits — fall through to the ladder
             else:
-                role_refined = sum(1 for a, b in zip(ml_parties, refined)
-                                   if a.role != b.role)
+                # Role-instability check runs FIRST and regardless of how
+                # many distinct sides `refined` carries: a name tagged with
+                # two conflicting roles (PETITIONER somewhere, RESPONDENT
+                # elsewhere) collapses to a single deduped Party on whichever
+                # side was seen first (extract_parties_ml's own dedup), so
+                # the very case this exists to catch can itself look
+                # single-sided below. Must not be shadowed by that check.
                 unstable = _ml_role_unstable_names(text, nlp)
                 if unstable:
                     block = extract_cause_title_block(text) or _prefix_title_block(text)
@@ -1191,17 +1197,51 @@ def extract_parties_hybrid(text: str, filename: str = "", *,
                         "ml_role_unstable",
                         {**meta_base, **ml_meta, "role_unstable_names": unstable},
                         title_block=block)
-                return PartyResult(
-                    refined, "mandatory_ml_plus_case_type",
-                    f"{len(refined)} parties from ML NER; {role_refined} role(s) "
-                    f"refined by deterministic case-type mapping",
-                    "high", {**meta_base, **ml_meta})
 
-    # Either the ML layer is degraded, or it ran and found nothing (some
+                if len({p.side for p in refined}) < 2:
+                    # ML found a party on only ONE side. On a real two-party
+                    # filing this is a strong signal the hit is spurious, not
+                    # merely incomplete -- e.g. a real case (suo motu PIL,
+                    # W.P.(CRL) 793/2017) whose actual cause title has a long
+                    # narrative Petitioner ("COURTS ON ITS OWN MOTION IN
+                    # RE:...") and a blank/placeholder Respondent field
+                    # ("......."). The ML layer here tagged a single
+                    # RESPONDENT-side PERSON deep in the body text -- the
+                    # deceased student's FATHER, quoted inside a settlement
+                    # recital, not a party at all -- and previously this was
+                    # trusted outright as "the Respondent" with "high"
+                    # confidence, with no Petitioner shown at all. Try the
+                    # deterministic ladder first; it already handles exactly
+                    # this kind of unusual cause title (see
+                    # test_petition_cause_title_parties.py). Keep this
+                    # partial ML result only as a last resort, at reduced
+                    # confidence, if the ladder finds nothing either.
+                    ml_single_side_fallback = PartyResult(
+                        refined, "ml_single_side_partial",
+                        "ML NER found a party on only one side of this "
+                        "filing — likely incomplete or spurious; "
+                        "deterministic ladder tried first", "medium",
+                        {**meta_base, **ml_meta})
+                else:
+                    role_refined = sum(1 for a, b in zip(ml_parties, refined)
+                                       if a.role != b.role)
+                    return PartyResult(
+                        refined, "mandatory_ml_plus_case_type",
+                        f"{len(refined)} parties from ML NER; {role_refined} "
+                        f"role(s) refined by deterministic case-type mapping",
+                        "high", {**meta_base, **ml_meta})
+
+    # Either the ML layer is degraded, it ran and found nothing (some
     # documents — orders with no cause title recap, annexure fragments —
-    # genuinely have no ML-findable parties). Fall through to the
+    # genuinely have no ML-findable parties), or it found a party on only
+    # one side (see ml_single_side_fallback above). Fall through to the
     # deterministic ladder, which still runs its own full 5-tier attempt.
     result = extract_parties_layered(text, filename)
+    if not result.parties and ml_single_side_fallback is not None:
+        # The ladder ALSO found nothing usable — better to show the
+        # incomplete-but-real ML hit, clearly marked as partial, than
+        # nothing at all.
+        return ml_single_side_fallback
     result.meta = {**meta_base, **result.meta,
                    "ml_layer_used": nlp is not None,
                    "note": ("ML layer active but found nothing; deterministic "
