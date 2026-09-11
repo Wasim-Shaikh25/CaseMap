@@ -533,11 +533,15 @@ const App = {
       if ((d.parties || []).length) {
         parties = d.parties.map(p =>
           `<span class="chip${unstable ? " chip-warn" : ""}">${esc(p.name)} <span class="muted">· ${esc(p.role)}</span></span>`).join("");
-      } else if (dropped.length) {
-        // Extraction found candidate name(s), but the downstream judge
-        // rejected all of them as not confidently looking like real party
-        // names -- show what was found and rejected rather than leaving
-        // the reader looking at an empty list with no trace of why.
+      } else if (dropped.length && dropped.length <= 3) {
+        // Extraction found a small number of candidate names, but the
+        // downstream judge rejected all of them as not confidently looking
+        // like real party names -- show what was found and rejected rather
+        // than leaving the reader looking at an empty list with no trace of
+        // why. A LARGER dropped count (many, e.g. an unusual narrative cause
+        // title split line-by-line into headings/dates/case numbers) means
+        // the extraction itself was noisy, not that there's one real name
+        // worth surfacing -- dumping all of them would be clutter, not help.
         parties = dropped.map(p =>
           `<span class="chip chip-warn">${esc(p.name)} <span class="muted">· ${esc(p.role)}</span></span>`).join("");
         note = `<div class="party-warning">⚠ Found but not shown above: extraction identified
@@ -545,7 +549,7 @@ const App = {
              check rejected ${dropped.length === 1 ? "it" : "them"} as not confidently looking
              like a real party name. Verify against the source document.</div>`;
       } else {
-        parties = `<span class="muted">No parties identified in this document.</span>`;
+        parties = `<span class="muted">No parties confidently identified in this document.</span>`;
       }
       const warning = unstable
         ? `<div class="party-warning">⚠ Low-confidence extraction on this document — the role
