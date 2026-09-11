@@ -321,14 +321,20 @@ const App = {
         if (perm !== "granted") throw new Error(`Permission to re-read "${h.name}" was denied.`);
         files.push(await h.getFile());
       }
+      // Read the checkbox's CURRENT state, not c.lookupProvisions -- that
+      // field only reflects whatever was checked at the ORIGINAL upload,
+      // and previously got resent unchanged on every reprocess with no way
+      // to turn the lookup on afterwards.
+      const lookupProvisions = document.getElementById("reprocessLookupInput").checked;
       const fd = new FormData();
       for (const f of files) fd.append("files", f, f.name);
-      fd.append("lookup_provisions", c.lookupProvisions ? "true" : "false");
+      fd.append("lookup_provisions", lookupProvisions ? "true" : "false");
       const r = await fetch(API.process, { method: "POST", body: fd });
       const graph = await r.json();
       if (!r.ok) throw new Error(graph.error || `Backend error (${r.status})`);
 
       c.graph = graph;
+      c.lookupProvisions = lookupProvisions;
       c.createdAt = Date.now();
       const list = Store.all();
       const idx = list.findIndex(x => x.id === c.id);
@@ -350,7 +356,10 @@ const App = {
     document.getElementById("caseTitle").textContent = c.name;
     document.title = `${c.name} — CaseMap`;
     HandleStore.get(id).then(handles => {
-      document.getElementById("reprocessBtn").hidden = !(handles && handles.length);
+      const canReprocess = !!(handles && handles.length);
+      document.getElementById("reprocessBtn").hidden = !canReprocess;
+      document.getElementById("reprocessLookupRow").hidden = !canReprocess;
+      document.getElementById("reprocessLookupInput").checked = !!c.lookupProvisions;
     });
 
     const g = c.graph;

@@ -103,6 +103,11 @@
         <div class="stats" id="caseStats"></div>
       </div>
       <div class="actions">
+        <label id="reprocessLookupRow" class="checkbox-row inline" hidden
+          title="Sends only the bare citation (e.g. &quot;Section 125 CrPC&quot;) to India Code, never any document content">
+          <input type="checkbox" id="reprocessLookupInput">
+          <span>Look up cited provisions online</span>
+        </label>
         <button class="btn" id="reprocessBtn" onclick="App.reprocessCase()" hidden
           title="Re-reads the same files from disk and re-runs extraction — only available when this case was uploaded via the file browser (not drag-and-drop) in Chrome or Edge">↻ Reprocess</button>
         <button class="btn" onclick="App.downloadReport()" title="Opens a print dialog — choose &quot;Save as PDF&quot; as the destination">⬇ Download counsel report (PDF)</button>

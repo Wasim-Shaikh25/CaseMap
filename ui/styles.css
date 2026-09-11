@@ -97,6 +97,10 @@ h2{font-family:var(--serif);font-size:18px;margin:0 0 10px}
 .checkbox-row input{margin-top:3px;flex-shrink:0}
 .checkbox-row span{font-size:12.5px;line-height:1.5;color:var(--ink-dim)}
 .checkbox-row a{color:var(--accent-strong)}
+.checkbox-row.inline{display:inline-flex;align-items:center;gap:6px;margin:0;
+  padding:6px 10px;width:auto}
+.checkbox-row.inline input{margin-top:0}
+.checkbox-row.inline span{font-size:12px}
 #processBtn{width:100%;padding:12px;font-size:14px;margin-top:6px}
 .statute-lookup{margin:6px 0 10px;padding:8px 12px;border-left:3px solid var(--accent);
   background:var(--accent-soft);border-radius:0 6px 6px 0}
@@ -120,7 +124,7 @@ h2{font-family:var(--serif);font-size:18px;margin:0 0 10px}
 .stat{display:flex;flex-direction:column}
 .stat .n{font-family:var(--serif);font-size:20px;font-weight:600}
 .stat .l{font-size:11px;color:var(--ink-dim);letter-spacing:.03em;text-transform:uppercase}
-#caseHead .actions{display:flex;gap:8px}
+#caseHead .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:22px 0 18px;
   overflow-x:auto;flex-wrap:nowrap}
