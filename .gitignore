@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local runtime state / caches — never committed (privacy: nothing the
+# server processes should persist past the request, see server/app.py's
+# "nothing is persisted" contract and FINDINGS.md F-5)
+.casemap_ocr_cache/
+casemap.db
+*.db
+
+# Scratch/session working area — this is where real, personal documents
+# (e.g. the owner's own BCI/writ petition, used for real-world testing)
+# live during a session. Must NEVER be committed. See AGENTS.md/FORBIDDEN.md.
+temp/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Local session lock (PID/session-id, meaningless outside this machine)
+.claude/scheduled_tasks.lock

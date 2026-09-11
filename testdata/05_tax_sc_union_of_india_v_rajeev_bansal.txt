@@ -1,0 +1,61 @@
+Source: https://indiankanoon.org/doc/116531705/
+Court: Supreme Court of India
+Case type: Tax (Income Tax Act reassessment, TOLA, Finance Act 2021)
+Retrieved: 2026-09-09
+
+Union Of India vs Rajeev Bansal on 3 October, 2024
+Author: Dhananjaya Y Chandrachud
+Bench: Dhananjaya Y Chandrachud
+
+2024 INSC 754
+Reportable
+IN THE SUPREME COURT OF INDIA
+CIVIL APPELLATE/ORIGINAL JURISDICTION
+Civil Appeal No 8629 of 2024
+
+Union of India & Ors.                                    … Appellants
+                       Versus
+Rajeev Bansal                                            …Respondent
+
+WITH C.A. No. 10238/2024 C.A. No. 10239/2024 C.A. No. 10240/2024
+C.A. No. 8843-8844/2024 T.P.(C) No. 2187-2194/2024 T.P.(C) No. 2714-2723/2023
+(Arising out of SLP(C) No. 23391/2024) (Diary No 24653/2023)
+C.A. No. 8836-8837/2024 (Arising out of SLP(C) No. 17283/2024)
+(Arising out of SLP(C) No. 17284/2024) (Arising out of SLP(C) No. 17286/2024)
+(Arising out of SLP(C) No. 17287/2024)
+
+JUDGMENT
+Dr Dhananjaya Y Chandrachud, CJI
+
+Table of Contents
+A. Background ........................................................................................ 35
+   i. Income Tax Act ............................................................................. 35
+   ii. TOLA .............................................................................................. 39
+   iii. Finance Act 2021 ......................................................................... 41
+B. Issues .................................................................................................. 50
+C. Submissions ....................................................................................... 51
+D. Legal Background .............................................................................. 55
+   i. Assessment as a quasi-judicial function .................................... 55
+   ii. Assessment as an issue of jurisdiction ...................................... 59
+   iii. Principles of strict interpretation and workability ..................... 63
+   iv. Principle of harmonious construction ........................................ 66
+E. Reading TOLA into the Income Tax Act ........................................... 70
+   i. First proviso to Section 149(1) of the new regime ..................... 70
+   ii. TOLA can extend the time limit till 31 June 2021 ...................... 75
+       a. Finance Act 2021 substituted the old regime ......................... 75
+       b. Reading TOLA into Section 149 .............................................. 82
+   iii. Sanction of the specified authority ............................................ 86
+F. Section 148 notices issued in June-September 2022 .................... 91
+   i. Scope of Article 142 ..................................................................... 91
+   ii. The scope of Ashish Agarwal extended to all the reassessment
+       notices issued between 1 April 2021 and 30 June 2021 under the
+       old regime ...................................................................................... 96
+   iii. Effect of the legal fiction .............................................................. 99
+        a. Third proviso to Section 149 .................................................. 100
+        b. Interplay of Ashish Agarwal with TOLA ................................. 107
+G. Conclusions ...................................................................................... 110
+
+PART A
+1. The present batch of appeals involves the interplay of three Parliamentary statutes: the Income Tax Act 1961, the Taxation and Other Laws (Relaxation and Amendment of Certain Provisions) Act 2020, and the Finance Act 2021.
+
+The Income Tax Act was enacted to levy and collect tax on the income of assessees. Sections 147 to 151 of the Income Tax Act deal with reassessment of income that has escaped assessment.

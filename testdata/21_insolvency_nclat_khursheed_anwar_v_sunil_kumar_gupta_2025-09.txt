@@ -1,0 +1,51 @@
+Source: https://indiankanoon.org/doc/85048043/
+Court: National Company Law Appellate Tribunal (NCLAT), Principal Bench, New Delhi
+Case type: Insolvency (IBC s.12A withdrawal of CIRP)
+Retrieved: 2026-09-09
+Bundle note: this document is part of a connected 3-document bundle used to test
+graph edge formation between fallback nodes, for
+docs/requirements/2026-09-09-verbatim-fallback-nodes/. Same Corporate Debtor
+("Cygnus Splendid Ltd"), same Resolution Professional ("Sunil Kumar Gupta"), same
+underlying creditor ("Bank of Baroda") as testdata/09_insolvency_nclat_singhania_v_bank_of_baroda.txt
+(the original CIRP admission, 2023) and testdata/22 (the Supreme Court appeal from
+THIS order, 2025).
+
+Dr. Khursheed Anwar And Anr vs Sunil Kumar Gupta on 19 September, 2025
+Author: Ashok Bhushan
+Bench: Ashok Bhushan
+
+NATIONAL COMPANY LAW APPELLATE TRIBUNAL
+PRINCIPAL BENCH, NEW DELHI
+Company Appeal (AT) (Ins) No. 1464 of 2025 &
+I.A. No. 5700, 5701 of 2025
+
+IN THE MATTER OF:
+Dr. Khursheed Anwar & Anr.                                    ...Appellants
+Versus
+Sunil Kumar Gupta,                                            ...Respondents
+RP of Cygnus Splendid Ltd. & Ors.
+
+Present:
+For Appellant       : Mr. Kushal Bansal, Advocate.
+For Respondents     : Ms. Asiya Khan, Advocate for R2.
+
+ORDER
+
+(Hybrid Mode) 19.09.2025: Heard counsel for the Appellant.
+
+2. This appeal has been filed against the order dated 05.06.2025 passed by the National Company Law Tribunal, New Delhi, Bench-II by which order the Adjudicating Authority has allowed the IA No. 2739 of 2025 filed under Section 12A permitting withdrawal of the CIRP. The Section 7 proceedings were initiated on application filed by the Bank of Baroda. In the CIRP, appellant was one of the prospective Resolution Applicant who has submitted the resolution plan. The plan was rejected in November 2024 and thereafter the Committee of Creditors has accepted the OTS.
+
+3. Challenging the order, Ld. Counsel for the appellant submits that appellant has given the resolution plan for the same amount for which OTS has been accepted and the appellant was through the entire process hence the procedure for withdrawal is not in accordance with law.
+
+4. Ld. Counsel for the respondent submitted that the plan of the appellant was rejected in November 2024 and thereafter the OTS was accepted by Bank of Baroda which was finalised in May, 2025.
+
+5. We have considered the submission of the parties and perused the records.
+
+6. The Committee of Creditors in its commercial wisdom has accepted the OTS and not approved the resolution plan submitted by the appellant. Appellant was only prospective resolution applicant who had only right that his plan should be considered. The CoC did not approve the plan, we are of the view that there is no ground to challenge the order impugned which is order permitting withdrawal of the CIRP on an OTS having been accepted by Bank of Baroda. The CoC having approved the withdrawal of CIRP as per the Section 12A read with Regulation 30A, we do not find any good ground to interfere with the order impugned. Ld. Counsel for the appellant submitted that CIRP has been conducted by the Bank of Baroda towards recovery of its dues which is not permissible.
+
+7. From the facts brought on the record, it is clear that insolvency resolution process had commenced and there was no challenge to the insolvency commencement or the insolvency resolution process. We are of the view that at the instance of the appellant we are unable to entertain the submission of the appellant that CIRP was not properly instituted and it was only for recovery.
+
+In view of the aforesaid, we dismiss the appeal.
+
+[Justice Ashok Bhushan] Chairperson [Barun Mitra] Member (Technical)
+Company Appeal (AT) (Ins) No. 1464 of 2025

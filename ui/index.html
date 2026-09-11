@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CaseMap</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="topbar">
+  <div id="brand" onclick="Router.go('dashboard')">
+    <span class="mark">CaseMap</span>
+    <span class="tag">Check your case insights</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn primary" onclick="Router.go('upload')">+ New case</button>
+</div>
+
+<main>
+
+  <!-- ================= DASHBOARD ================= -->
+  <section id="dashboard">
+    <div class="head">
+      <div>
+        <h1>Your cases</h1>
+        <p class="intro">CaseMap turns a bundle of PDFs or Word filings into a verbatim, page-and-paragraph-cited
+          timeline, document breakdown, and citation list — every fact is a direct excerpt from the source, with an
+          exact reference back to it. Nothing is summarized, paraphrased, or generated.</p>
+        <p class="muted">Every case lives only in this browser — nothing is kept on the backend after processing.
+          The only thing that ever leaves this device is an anonymous page-load count (no document data, ever) so
+          the people behind this tool know it's actually being used.</p>
+      </div>
+    </div>
+    <div id="caseGrid"></div>
+    <div id="emptyState" class="empty-state hidden">
+      <div style="font-size:30px">📂</div>
+      <div style="font-weight:700;margin-top:6px">No cases yet</div>
+      <p class="muted">Upload a bundle of PDFs or Word documents to build your first case file.</p>
+      <button class="btn primary" onclick="Router.go('upload')">+ New case</button>
+    </div>
+  </section>
+
+  <!-- ================= UPLOAD ================= -->
+  <section id="uploadView" class="hidden">
+    <button class="btn ghost" onclick="Router.go('dashboard')">← Back</button>
+    <h1 style="margin-top:14px">New case</h1>
+    <p class="muted">PDF, Word (.docx) or plain text. Processed once, here, then discarded on the backend — the structured result is what gets saved, only in your browser.</p>
+
+    <div id="dropzone">
+      <div class="glyph">⤒</div>
+      <div style="font-weight:600">Drop files here, or click to browse</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">.pdf · .docx · .txt — multiple files at once</div>
+      <input id="fileInput" type="file" multiple accept=".pdf,.docx,.doc,.txt" class="hidden">
+    </div>
+
+    <div id="fileList"></div>
+
+    <div id="caseNameRow" class="hidden">
+      <input id="caseNameInput" type="text" placeholder="Name this case (e.g. Sharma v. State of MP)">
+    </div>
+
+    <button id="processBtn" class="btn primary hidden" onclick="App.processFiles()">Process documents</button>
+
+    <div id="progressWrap">
+      <div class="progress-line"><span class="spinner"></span><span id="progressText">Processing…</span></div>
+    </div>
+    <div id="errorBox"></div>
+  </section>
+
+  <!-- ================= CASE VIEW ================= -->
+  <section id="caseView" class="hidden">
+    <button class="btn ghost" onclick="Router.go('dashboard')">← All cases</button>
+
+    <div id="caseHead">
+      <div>
+        <h1 id="caseTitle">—</h1>
+        <div class="stats" id="caseStats"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="reprocessBtn" onclick="App.reprocessCase()" hidden
+          title="Re-reads the same files from disk and re-runs extraction — only available when this case was uploaded via the file browser (not drag-and-drop) in Chrome or Edge">↻ Reprocess</button>
+        <button class="btn" onclick="App.downloadReport()" title="Opens a print dialog — choose &quot;Save as PDF&quot; as the destination">⬇ Download counsel report (PDF)</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="timeline" onclick="App.switchTab('timeline')">Timeline</button>
+      <button class="tab" data-tab="tree" onclick="App.switchTab('tree')">Documents insights</button>
+      <button class="tab" data-tab="provisions" onclick="App.switchTab('provisions')">Provisions</button>
+      <button class="tab" data-tab="parties" onclick="App.switchTab('parties')">Parties</button>
+      <button class="tab" data-tab="conflicts" onclick="App.switchTab('conflicts')">Conflicts<span id="conflictBadge" class="tab-badge hidden">0</span></button>
+    </div>
+
+    <div id="tab-timeline" class="tabpanel active"><div class="timeline" id="timelineBody"></div></div>
+    <div id="tab-tree" class="tabpanel"><div class="doctree" id="treeBody"></div></div>
+    <div id="tab-provisions" class="tabpanel"><div id="provisionsBody"></div></div>
+    <div id="tab-parties" class="tabpanel"><div id="partiesBody"></div></div>
+    <div id="tab-conflicts" class="tabpanel"><div id="conflictsBody"></div></div>
+  </section>
+
+</main>
+
+<footer id="sitefoot">
+  Built by <a href="https://www.ecocodes.in" target="_blank" rel="noopener">EcoCode Solutions</a>
+</footer>
+
+<div id="drawerBackdrop" onclick="App.closeDrawer()"></div>
+<div id="drawer">
+  <div class="dhead">
+    <div>
+      <div class="dtype" id="drawerType">EVENT</div>
+      <div id="drawerTitle" style="font-weight:700;font-size:14.5px;margin-top:3px"></div>
+    </div>
+    <button class="dclose" onclick="App.closeDrawer()">✕</button>
+  </div>
+  <div class="dbody" id="drawerBody"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

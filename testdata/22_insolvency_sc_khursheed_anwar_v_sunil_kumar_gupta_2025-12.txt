@@ -1,0 +1,71 @@
+Source: https://indiankanoon.org/doc/54261789/
+Court: Supreme Court of India (Daily Orders)
+Case type: Insolvency (appeal from NCLAT dismissal of s.12A CIRP withdrawal challenge)
+Retrieved: 2026-09-09
+Bundle note: this document is part of a connected 3-document bundle used to test
+graph edge formation between fallback nodes, for
+docs/requirements/2026-09-09-verbatim-fallback-nodes/. This is the Supreme Court
+appeal from testdata/21 (NCLAT, 19 September 2025) — explicitly names that order's
+date and case number below. Same Corporate Debtor ("Cygnus Splendid Ltd") and same
+Resolution Professional ("Sunil Kumar Gupta") as testdata/09 and testdata/21.
+
+Khursheed Anwar vs Sunil Kumar Gupta on 5 December, 2025
+
+IN THE SUPREME COURT OF INDIA
+CIVIL APPELLATE JURISDICTION
+CIVIL APPEAL NO.13774 OF 2025
+
+KHURSHEED ANWAR & ANR.                                    APPELLANT(S)
+                       VERSUS
+SUNIL KUMAR GUPTA
+RP OF CYGNUS SPLENDID LTD. & ORS.                         RESPONDENT(S)
+
+ORDER
+
+1. We find no good reason to interfere with the impugned order dated 19.09.2025 passed by the National Company Law Appellate Tribunal, Principal Bench, New Delhi in Company Appeal (AT)(Insolvency) No. 1464 of 2025.
+
+2. The appeal is accordingly dismissed.
+
+3. Pending application(s), if any, stands disposed of.
+
+[J.B. PARDIWALA], J.
+[PRASANNA B. VARALE], J.
+
+New Delhi
+5th December, 2025.
+
+ITEM NO.19                 COURT NO.7                 SECTION XVII-B
+
+S U P R E M E C O U R T   O F   I N D I A
+RECORD OF PROCEEDINGS
+
+Civil Appeal No(s). 13774/2025
+
+KHURSHEED ANWAR & ANR.                           APPELLANT(S)
+                                  VERSUS
+SUNIL KUMAR GUPTA
+RP OF CYGNUS SPLENDID LTD. & ORS.                RESPONDENT(S)
+
+FOR ADMISSION
+IA No. 296086/2025 - STAY APPLICATION
+Date: 05-12-2025
+
+This matter was called on for hearing today.
+CORAM:
+HON'BLE MR. JUSTICE J.B. PARDIWALA
+HON'BLE MR. JUSTICE PRASANNA B. VARALE
+
+For Appellant(s): Mr. Rachit Mittal, Adv.
+                  Mr. Shashwat Anand, AOR
+                  Mr. Shashank Singh, Adv.
+                  Mr. Shivang Singh, Adv.
+For Respondent(s):
+
+UPON hearing the counsel the Court made the following ORDER
+
+1. The appeal is dismissed in terms of the signed order.
+2. Pending application(s), if any, stands disposed of.
+
+(CHANDRESH)                    (POOJA SHARMA)
+ASTT. REGISTRAR-cum-PS         COURT MASTER
+(Signed order is placed on the file)

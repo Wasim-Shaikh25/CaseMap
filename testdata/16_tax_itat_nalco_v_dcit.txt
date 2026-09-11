@@ -1,0 +1,55 @@
+Source: https://indiankanoon.org/doc/199618091/
+Court: Income Tax Appellate Tribunal - Cuttack
+Case type: Tax (cross-appeals, disallowance of expenses)
+Retrieved: 2026-09-09
+Note: source document mixes Hindi (Devanagari) headers with English body text — kept as a
+genuine OCR/multi-script edge case, not cleaned up.
+
+National Aluminium Company Ltd., ... vs Dcit, Bhubaneswar on 23 April, 2018
+
+IN THE INCOME TAX APPELLATE TRIBUNAL CUTTACK BENCH CUTTACK
+BEFORE SHRI N.S.SAINI, AM & SHRI PAVAN KUMAR GADALE, JM
+
+ITA No.343 & 392/CTK/2015
+(Assessment Year: 2007-2008 & 2008-2009)
+National Aluminium Company Limited,               Vs.   Ad.CIT, Range-2, Bhubaneswar
+NALCO Bhavan, P/1, Nayapalli, Bhubaneswar
+PAN/GIR No.: AAACN 7449 M
+(Appellant)                                        ..    (Respondent)
+
+AND
+
+ITA No.353 & 383/CTK/2015
+(Assessment Year: 2007-2008 & 2008-2009)
+Ad.CIT, Range-2, Bhubaneswar                       Vs.   National Aluminium Company Limited,
+                                                          NALCO Bhavan, P/1, Nayapalli, Bhubaneswar
+PAN/GIR No.: AAACN 7449 M
+(Appellant)                                        ..    (Respondent)
+
+AND
+
+Cross Objection No.49 & 51/CTK/2015
+(Arising out of ITA Nos.353&383/CTK/2015)
+(Assessment Year: 2007-2008 & 2008-2009)
+National Aluminium Company Limited,               Vs.   Ad.CIT, Range-2, Bhubaneswar
+NALCO Bhavan, P/1, Nayapalli, Bhubaneswar
+PAN/GIR No.: AAACN 7449 M
+(Appellant)                                        ..    (Respondent)
+
+Assessee by: Shri B.K.Mahapatra,CA/A.K.Sabat,CA
+Revenue by: Shri A.K.Mohapatra, CITDR
+Date of Hearing: 10/04/2018
+Date of Pronouncement: 23/04/2018
+
+ORDER
+Per Shri Pavan Kumar Gadale, JM:
+
+These are the cross appeals filed by the assessee and Revenue and cross objections by the assessee, against the separate orders of the ITA Nos.343, 353, 383 & 392/CTK/2015 CO Nos.49&51/CTK/2015 CIT(A)-1, Bhubaneswar, passed in IT Appeal No.0176/14-15 & 0544/14-15, dated 7.5.2015 & 8.6.2015 for the assessment years 2007-2008 & 2008-2009.
+
+2. Since issues in all the appeals are common, they were heard together and disposed of by this common order. First we shall consider the grounds raised in assessee's appeal for the assessment year 2007-2008 in ITA No.343/CTK/2015 as under:-
+
+1. That the order dated 07.05.2015 passed by the Learned Commissioner of Income Tax (Appeals) [in short "CIT(Appeals)"], in so far as sustaining the additions and disallowance made by the Learned Assessing Officer, is based on irrelevant considerations, against natural justice, contrary to facts, arbitrary, erroneous and bad in law.
+
+2. Disallowance under "Peripheral Development Expenses" Rs.56,27,609/-
+a. That on the facts and in the circumstances the case, the order of the learned CIT (Appeals) in partly sustaining the disallowance of Rs.56,27,609/- under 'Peripheral Development Expenses' is based on irrelevant considerations, contrary to facts, arbitrary, erroneous and bad in law.
+b. That the aforesaid expenditure of Rs.56,27,609/- having been incurred by the assessee wholly and exclusively for the purpose of its business, the sustaining of the disallowance by the learned CIT(Appeals) is on mis-appreciation of facts, arbitrary, erroneous and bad both on facts and in law.

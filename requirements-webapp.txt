@@ -1,0 +1,27 @@
+# CaseMap local web app — server/app.py + ui/.
+#
+# Installed and verified in .venv this session (2026-09-10): imports clean,
+# /api/health and /api/process both exercised end-to-end against real
+# testdata/ documents (single-doc and the 3-doc insolvency bundle, cross-doc
+# edges + cross-doc provision linking both confirmed in the response).
+#
+# Everything else the pipeline itself needs (spaCy/en_legal_ner_sm,
+# sentence-transformers, PyMuPDF, dateparser, ...) is unchanged — see
+# requirements.txt. This file only adds the HTTP layer on top.
+
+fastapi
+uvicorn[standard]
+python-multipart   # required by FastAPI to parse the multipart file uploads
+python-docx        # .docx text extraction (server/app.py:_docx_to_pages)
+
+# Small local "judge" models — 2026-09-10. Neither GENERATES text; both only
+# select/classify against text that's already there, which is why this
+# doesn't reopen the no-generative-LLM rule (FINDINGS.md F-11): the model
+# never gets to invent what's shown, only where to cut or which candidate to
+# keep. See server/app.py's _sat_boundary()/_gliner_party_judge() docstrings.
+wtpsplit-lite       # segment-any-text/sat-3l-sm, ONNX inference — sentence-
+                    # boundary judge, replaces regex heuristics for dated
+                    # snippet trimming. ~0.2B params, downloaded once, local.
+gliner              # urchade/gliner_small-v2.1 — zero-shot span classifier,
+                    # party-name judge: keep/drop an already-extracted
+                    # candidate, never proposes new ones.

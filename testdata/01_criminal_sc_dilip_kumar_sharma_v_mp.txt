@@ -1,0 +1,91 @@
+Source: https://indiankanoon.org/doc/571945/
+Court: Supreme Court of India
+Case type: Criminal (IPC murder / sentencing)
+Retrieved: 2026-09-09
+
+Dilip Kumar Sharma & Ors vs State Of Madhya Pradesh on 10 October, 1975
+Equivalent citations: 1976 AIR 133, 1976 SCR (2) 289, AIR 1976 SUPREME COURT 133, (1976) 1 SCC 560, 1976 2 SCR 289, 1976 CRI APP R (SC) 18, 1976 2 SCJ 91, 1976 SC CRI R 58, 1976 SCC(CRI) 85, 1976 MADLJ(CRI) 393
+Author: Y.V. Chandrachud
+Bench: Y.V. Chandrachud, P.N. Bhagwati, Ranjit Singh Sarkaria
+
+PETITIONER:
+DILIP KUMAR SHARMA & ORS.
+
+	Vs.
+
+RESPONDENT:
+STATE OF MADHYA PRADESH
+
+DATE OF JUDGMENT10/10/1975
+
+BENCH:
+CHANDRACHUD, Y.V.
+BENCH:
+CHANDRACHUD, Y.V.
+BHAGWATI, P.N.
+SARKARIA, RANJIT SINGH
+
+CITATION:
+ 1976 AIR  133		  1976 SCR  (2) 289
+ 1976 SCC  (1) 586
+ CITATOR INFO :
+ RF	    1977 SC1485	 (4)
+ RF	    1978 SC1675	 (114)
+ RF	    1981 SC 547	 (7,27)
+ R	    1983 SC 473	 (23)
+
+ACT:
+     I.P.C.,  s.   303	and   303-Sentence   to	  motiveless
+murderers-Meaning  of	person	under	sentence   of	life
+imprisonment-Relevant date  for s. 303-Effect of an order of
+acquittal-Whether court	 seized of  a proceedings  can	take
+into  account  subsequent  events-Interpretation  consistent
+with  good   sense  and	  fairness-Construction	 leading  to
+oppressible, unjust and inconsistent result.
+
+HEADNOTE:
+     The appellants  Dilip Kumar, Bharatsingh and Rohitsingh
+were  convicted	 for  committing  the  murder  of  one	Arun
+Bhargava. The  learned Sessions	 Judge convicted Dilip Kumar
+under s.  302 and  Bharatsingh under  s. 302 read with s. 34
+and Rohitsingh under s. 303 IPC and sentenced them to death.
+     One Prabhu was murdered before the incident in question
+took place  for	 which	Rohitsingh  was	 sentenced  to	life
+imprisonment by	 the Sessions Court in May, 1972. In appeal,
+Rohitsingh was	acquitted by  Madhya Pradesh  High Court  in
+February, 1974,	 being the  same day on which the High Court
+pronounced its	judgment in  the present  case. The Sessions
+Court in  the instant ease, had to impose the death sentence
+on Rohitsingh  as he  was, at the time of conviction for the
+present offence,  undergoing sentence  of  imprisonment	 for
+life.
+     The High Court confirmed the conviction and sentence of
+Dilip Kumar.  The High	Court also  confirmed the conviction
+and  sentence	of   Rohitsingh.   While   maintaining	 the
+conviction, High  Court reduced	 the sentence of Bharatsingh
+to imprisonment for life.
+     In May,  1974, this  Court granted Special Leave to the
+appellants limited to the question of application of section
+303 in the case of Rohitsingh and sentence in cases of all.
+
+JUDGMENT:
+
+CRIMINAL APPELLATE JURISDICTION : Criminal Appeal No. 188 of 1974.
+
+Appeal by special leave from the Judgment and Order dated the 27th February, 1974 of the Madhya Pradesh High Court Indore Bench in Criminal Appeals Nos. 61 to 63 and Death Reference No. 2 of 1974.
+
+A. N. Mulla and S. K. Gambhir for the Appellants. I. N. Shroff for the Respondent.
+
+The Judgment of Y. V. Chandrachud and P. N. Bhagwati, JJ. was delivered by Chandrachud, J., R. S. Sarkaria, J., gave a separate Opinion.
+
+CHANDRACHUD, J. Since this appeal by special leave is limited to the question of sentence, it would be enough to set out the facts bearing on the sentence.
+
+The appellants, Dilip Kumar, Bharatsingh and Rohitsingh were tried by the Sessions Judge, Ujjain, for committing the murder of one Arun Bhargava. The learned Judge convicted Dilip Kumar under section 302, Bharatsingh under section 302 read with section 34, Rohitsingh under section 303 of the Penal Code and sentenced them to death. The High Court of Madhya Pradesh, Indore Bench, confirmed the conviction and sentence of Dilip Kumar and Rohitsingh. The conviction of Bharatsingh was also confirmed but the High Court reduced his sentence to imprisonment for life.
+
+On May 3, 1974 this Court granted special leave to the appellants "limited to the question of application of section 303 in the case of Rohitsingh and sentences in case of all". Counsel for the appellants urged that under this order Bharatsingh is entitled to challenge the sentence of life imprisonment imposed upon him by the High Court and since that cannot be done without challenging Bharatsingh's conviction under section 302 read with section 34, the order of conviction is also open to challenge in this appeal. There is no merit in this argument. Rohitsingh's case apart, the special leave petition filed by the appellants was not admitted on the question of conviction and leave was expressly restricted to the question of sentence only. Bharatsingh having been convicted under section 302 read with section 34, there is no scope for any argument as regards the sentence imposed on him. The minimum sentence for murder under section 302 is imprisonment for life and that is the sentence which the High Court has imposed on Bharatsingh.
+
+At regards Dilip Kumar, we see no reason to reduce the sentence of death imposed on him by the Sessions Court and confirmed by the High Court. On June 20, 1973 at 9 p.m. the deceased Arun Bhargava was sitting in front of a hotel in Ujjain. Bharatsingh and Rohitsingh caught hold of his arms from behind and Dilip Kumar stabbed him on the chest with a big knife. As a result of the injury, the pleura, the pericardium and the right ventricle of the heart were all cut. Dilip Kumar's conduct cannot be viewed with leniency and the High Court was right in confirming the death sentence passed by the Sessions Court.
+
+As regards Rohitsingh the main question for consideration is whether his conviction under section 303, Penal Code, is legal. If it is, the sentence of death has to be upheld because under section 303, "Whoever, being under sentence of imprisonment for life, commits murder, shall be punished with death". The section leaves no discretion to award a lesser sentence than death.
+
+One Prabhu was murdered on October 24, 1971 for which Rohitsingh was sentenced to life imprisonment on May 18, 1972 in Sessions Case No. 5 of 1972. In appeal, Rohitsingh was acquitted by the Madhya Pradesh High Court, on February 27, 1974, being the very date on which the High Court pronounced its judgment in the instant case.
