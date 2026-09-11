@@ -48,6 +48,30 @@ from rhetorical_roles import tag_paragraphs, split_paragraphs
 ACT_WINDOW_CHARS = 160  # how far around a bare "Section 22" hit to look for "... Act, 1956"
 _TIGHT_ACT_RE = re.compile(r"([A-Z][\w&/,.\-]*(?:\s+[A-Z][\w&/,.\-]*){0,4}\s+Act(?:,\s*\d{4})?)$")
 
+# India's three founding criminal statutes are "...Code", not "...Act" (Indian
+# Penal Code, Code of Criminal Procedure, Code of Civil Procedure) -- _ACT_IN_SPAN
+# / _TIGHT_ACT_RE require the literal word "Act" and so never match them, which
+# meant every IPC/CrPC/CPC section citation in a criminal filing (an extremely
+# common case) permanently showed "Act not named nearby" even when the
+# document said e.g. "Section 306 of the IPC" right next to it. Mirrors the
+# Act pair above but keyed on "Code".
+_CODE_IN_SPAN = re.compile(
+    r"\b(?:the\s+)?(?P<code>[A-Z][A-Za-z.\s]{2,60}?Code(?:,\s*\d{4})?)", re.I)
+_TIGHT_CODE_RE = re.compile(r"([A-Z][\w&/,.\-]*(?:\s+[A-Z][\w&/,.\-]*){0,4}\s+Code(?:,\s*\d{4})?)$")
+
+# Bare acronyms for the same statutes (and the Evidence Act) -- "IPC" IS the
+# Indian Penal Code, not an abbreviation the Act/Code regexes above would
+# otherwise expand from prose. Whole-word match only; these are distinctive
+# enough uppercase tokens that a case-sensitive match doesn't need the
+# capitalization guard _find_act_name applies to prose "Act"/"Code" hits.
+_ACT_ACRONYM_RE = re.compile(r"\b(IPC|Cr\.?\s?P\.?\s?C\.?|C\.?P\.?C\.?|IEA)\b")
+_ACT_ACRONYMS = {
+    "IPC": "Indian Penal Code",
+    "CRPC": "Code of Criminal Procedure",
+    "CPC": "Code of Civil Procedure",
+    "IEA": "Indian Evidence Act",
+}
+
 EMBED_MODEL = "all-MiniLM-L6-v2"
 CONTEXT_CHARS = 450  # each side of a sentence, for the "expand to paragraph" view
 EST_CHARS_PER_PAGE = 3000  # rough estimate for single-spaced 12pt legal text
@@ -622,30 +646,49 @@ def _section_fallback_event(section: dict, section_text: str, document_id: str) 
 
 
 def _find_act_name(window: str) -> str | None:
-    """Look for a real Act name in a prose window around a bare "Section N"
-    citation. _ACT_IN_SPAN (case_symbols.py) is compiled case-INsensitive —
-    correct for the tight, already-clean citation strings it was written
-    for ("Section 7 of the Advocates Act, 1961"), but scanning open prose
-    with it surfaces false positives: "no fact", "disciplinary act", "in
-    charact[er]" all match "act" as a case-insensitive substring. Rather
-    than change the shared regex (other callers rely on its current
-    behavior on short strings, where this doesn't come up), require the
-    literal capitalized word "Act" in what it found before trusting it —
-    real Act names are always capitalized in these documents; ordinary
-    prose using the word "act" is not."""
+    """Look for the governing statute's name in a prose window around a
+    bare "Section N" citation -- an Act ("Advocates Act, 1961"), a Code
+    (IPC/CrPC/CPC are "...Code", not "...Act"), or a bare acronym for either.
+    _ACT_IN_SPAN (case_symbols.py) is compiled case-INsensitive — correct for
+    the tight, already-clean citation strings it was written for ("Section 7
+    of the Advocates Act, 1961"), but scanning open prose with it surfaces
+    false positives: "no fact", "disciplinary act", "in charact[er]" all
+    match "act" as a case-insensitive substring. Rather than change the
+    shared regex (other callers rely on its current behavior on short
+    strings, where this doesn't come up), require the literal capitalized
+    word "Act"/"Code" in what it found before trusting it — real statute
+    names are always capitalized in these documents; ordinary prose using
+    the word "act" is not."""
     m = _ACT_IN_SPAN.search(window)
-    if not m:
-        return None
-    candidate = re.sub(r"\s+", " ", m.group("act")).strip()
-    if len(candidate) > 120 or not re.search(r"\bAct\b", candidate):
-        return None
-    # _ACT_IN_SPAN's own non-greedy match can still walk back through an
-    # entire lowercase clause to whatever capital letter starts the window
-    # ("within the statutory scheme of the Advocates Act") — trim to just
-    # the run of capitalized words immediately before "Act" so the UI shows
-    # "Advocates Act" rather than the whole clause.
-    tight = _TIGHT_ACT_RE.search(candidate)
-    return tight.group(1) if tight else candidate
+    if m:
+        candidate = re.sub(r"\s+", " ", m.group("act")).strip()
+        if len(candidate) <= 120 and re.search(r"\bAct\b", candidate):
+            # _ACT_IN_SPAN's own non-greedy match can still walk back through
+            # an entire lowercase clause to whatever capital letter starts
+            # the window ("within the statutory scheme of the Advocates
+            # Act") — trim to just the run of capitalized words immediately
+            # before "Act" so the UI shows "Advocates Act" rather than the
+            # whole clause.
+            tight = _TIGHT_ACT_RE.search(candidate)
+            return tight.group(1) if tight else candidate
+
+    # Same idea, for statutes named "...Code" rather than "...Act" (Indian
+    # Penal Code, Code of Criminal Procedure) — see _CODE_IN_SPAN docstring.
+    m = _CODE_IN_SPAN.search(window)
+    if m:
+        candidate = re.sub(r"\s+", " ", m.group("code")).strip()
+        if len(candidate) <= 120 and re.search(r"\bCode\b", candidate):
+            tight = _TIGHT_CODE_RE.search(candidate)
+            return tight.group(1) if tight else candidate
+
+    # Bare acronym ("Section 306 IPC", "Section 173 Cr.P.C.") -- neither
+    # regex above fires since there's no prose Act/Code name to find.
+    am = _ACT_ACRONYM_RE.search(window)
+    if am:
+        norm = re.sub(r"[.\s]", "", am.group(1)).upper()
+        return _ACT_ACRONYMS.get(norm)
+
+    return None
 
 
 def _normalize_act_for_key(act: str | None) -> str | None:
