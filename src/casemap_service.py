@@ -142,6 +142,17 @@ def _get_gliner_model():
     return _GLINER_MODEL
 
 
+# "& Ors."/"& Anr."/"and Others" is pure Indian-legal-caption boilerplate
+# appended after a real name ("N. Ram & Ors") -- never itself part of what
+# makes something a name. Found on a real filed writ petition (2026-09-11):
+# GLiNER returns ZERO entities for "N. RAM & ORS" (score 0) but correctly
+# tags "N. RAM" alone at 0.40 -- the suffix confuses the model into missing
+# the real name attached to it. Stripped before judging only; the stored
+# party name itself keeps the suffix (it's real information -- unnamed
+# co-parties exist).
+_ORS_SUFFIX_RE = re.compile(r"\s*(?:&|and)\s*(?:ors?|anrs?|others?)\.?\s*$", re.I)
+
+
 def _judge_party_name(name: str) -> bool:
     """True if the party judge thinks `name` is plausibly a real person/org
     name, False if it looks like extraction noise (a section heading, a
@@ -151,16 +162,21 @@ def _judge_party_name(name: str) -> bool:
     model = _get_gliner_model()
     if model is None:
         return True
+    judge_name = _ORS_SUFFIX_RE.sub("", name).strip() or name
     try:
-        ents = model.predict_entities(name, _PARTY_LABELS, threshold=0.3)
+        ents = model.predict_entities(judge_name, _PARTY_LABELS, threshold=0.3)
     except Exception:
         traceback.print_exc()
         return True
-    # Keep only when the judge's span covers essentially the whole
-    # candidate — a partial match (the model finding a person's name
-    # buried inside a longer noisy string) isn't the same as the whole
-    # candidate BEING a name.
-    return any(e["end"] - e["start"] >= 0.7 * len(name) for e in ents)
+    # Keep when the judge's entities TOGETHER cover most of the candidate.
+    # Not "any single entity" -- a real name the model splits into two
+    # adjacent spans ("The Sarpanch" + "Grampanchayat Tiroda", a real NGT
+    # appellant, 2026-09-11) would otherwise fail a per-entity 70% test
+    # even though the two spans jointly cover 94% of the string. Overlaps
+    # are naturally rare for span predictions over a single short candidate,
+    # so a plain sum is a fine approximation of true coverage here.
+    covered = sum(e["end"] - e["start"] for e in ents)
+    return covered >= 0.7 * len(judge_name)
 
 
 def layer_status() -> dict:

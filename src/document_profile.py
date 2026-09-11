@@ -275,7 +275,8 @@ STANDALONE_ROLE_RE = re.compile(
 # indiankanoon caption furniture (same family as casemap_pipeline._FURNITURE_LINE_RE).
 # `Author:` not `^author\b` — that would drop "Authorised Officer" as a party.
 _CAPTION_FURNITURE_RE = re.compile(
-    r"^(equivalent citations\b|author\s*:|bench\s*:|reportable\b|source:)", re.I)
+    r"^(equivalent citations\b|author\s*:|bench\s*:|reportable\b|source:|"
+    r"page\s+\d+\s+of\s+\d+\s*$)", re.I)
 _CAPTION_SECTION_RE = re.compile(
     r"^(citation|citator info|date of judgment|act)\s*:?\s*$", re.I)
 
@@ -400,10 +401,16 @@ REGISTRY_LINE_RE = re.compile(
     r"^\s*(?:judgment|order)\s+(?:reserved|pronounced|delivered|dated)\s+on\b|"
     r"^\s*(?:date\s+of\s+(?:hearing|judgment|order))\b|^\s*reserved\s+on\b", re.I)
 
-# Address continuation: has a PIN code or a street-type token
+# Address continuation: has a PIN code or a street-type token. "taluk(a)"/
+# "tehsil"/"village" added 2026-09-11 (real NGT appeal, F-22) -- unlike
+# "district" (a real office title too: "District Collector", "District
+# Judge" are genuine parties, so it's deliberately NOT here), these three
+# are address-only Indian revenue-administration terms with no plausible
+# party-name reading.
 ADDRESS_LINE_RE = re.compile(
-    r"\b\d{6}\b|\b(?:road|street|marg|nagar|chambers|centre|center|bhavan|"
-    r"tower|complex|colony|sector|block|floor|opp\.?|near)\b", re.I)
+    r"\b\d{6}\b|\btal\.|\b(?:road|street|marg|nagar|chambers|centre|center|"
+    r"bhavan|tower|complex|colony|sector|block|floor|opp\.?|near|taluka?|"
+    r"tehsil|village)\b", re.I)
 
 # A line that is prose, not a name.
 _SENTENCE_RE = re.compile(r"^\s*(?:\d+\s*[\.\)]\s*)?(?:that\b|the\s+\w+\s+(?:is|are|has|have|was|were)\b)", re.I)
@@ -521,7 +528,7 @@ def _block_bounds_above(lines: list[str], anchor: int, max_span: int = 20) -> in
             break
         if (TITLE_TOP_RE.match(s) or CASE_NUMBER_RE.search(s)
                 or FORUM_RE.search(s) or INDIC_CASE_NO_RE.search(s)
-                or CASE_HEADING_RE.match(s)):
+                or CASE_HEADING_RE.match(s) or _BETWEEN_RE.match(s)):
             break
         start = i
     return start
@@ -624,6 +631,25 @@ def extract_parties(text: str, profile: Profile) -> tuple[list[Party], dict]:
     # A single judgment often decides SEVERAL connected appeals, each with its
     # own cause title joined by "WITH". Collect every separator, not just one.
     anchors = [i for i, l in enumerate(lines) if is_versus_line(l)]
+    between_idx = None
+    if not anchors:
+        # Tribunal captions (NGT, some NCLAT/consumer fora orders) don't use
+        # VERSUS at all: "BETWEEN: <party block> ....Appellants. AND <party
+        # block> ....Respondents." Found on a real filed NGT appeal
+        # (2026-09-11) that returned zero parties despite a clean, real
+        # multi-party caption -- the cause title WAS there, just not anchored
+        # on a word this ladder recognized. Gated on BETWEEN actually being
+        # present so a document's ordinary prose "AND" is never mistaken for
+        # a caption separator.
+        between_idx = next((i for i, l in enumerate(lines[:80])
+                            if _BETWEEN_RE.match(l)), None)
+        if between_idx is not None:
+            and_idx = next((i for i in range(between_idx + 1, min(len(lines), between_idx + 60))
+                            if _AND_SEP_RE.match(lines[i])), None)
+            if and_idx is not None:
+                anchors = [and_idx]
+            else:
+                between_idx = None
     if not anchors:
         return [], meta
     anchor = anchors[0]
@@ -651,7 +677,19 @@ def extract_parties(text: str, profile: Profile) -> tuple[list[Party], dict]:
         prev_anc = anchors[idx - 1] if idx else -1
         next_anc = anchors[idx + 1] if idx + 1 < len(anchors) else len(lines)
 
-        lo_a = max(_block_bounds_above(lines, anc), prev_anc + 1)
+        if idx == 0 and between_idx is not None:
+            # We already know exactly where this block starts -- skip the
+            # generic upward walk entirely. It exists to FIND the top of a
+            # VERSUS cause title, an unknown boundary; here the boundary is
+            # already known (right after "BETWEEN:"). Reusing it anyway was
+            # the actual bug on the real NGT appeal above: a run of blank
+            # lines inside a real 3-party numbered address block (a PDF
+            # layout artifact, not a caption boundary) tripped the walk's
+            # "3 blank lines = left the caption" heuristic and truncated the
+            # block to 2 lines, silently dropping all 3 real Appellants.
+            lo_a = max(between_idx + 1, prev_anc + 1)
+        else:
+            lo_a = max(_block_bounds_above(lines, anc), prev_anc + 1)
         hi_b = min(_block_bounds_below(lines, anc), next_anc - 1)
         if idx == 0:
             meta["block_above"] = (lo_a, anc - 1)

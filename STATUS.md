@@ -27,7 +27,18 @@ not re-add it without re-reading `FINDINGS.md` F-21 first; `real_pdfs/` exists (
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 75: Docling layout layer removed — never active, redundant with existing OCR, no measured benefit, see FINDINGS.md F-21)
+**Last updated:** 2026-09-11 (entry 76: real fetched docs surfaced and fixed 2 party-extraction bugs — BETWEEN/AND tribunal captions, GLiNER "& Ors." false negative, see FINDINGS.md F-22)
+
+**2026-09-11 — Real fetched documents (writ petition, NGT appeal, affidavit, agreements) surfaced 2 party-extraction
+bugs, both fixed.** Owner asked to fetch real public documents outside `testdata/` and see how the pipeline performs.
+Event/fact extraction generalized well with zero tuning; party extraction missed 2 real cases: (1) tribunal
+`BETWEEN: ... AND ...` captions (no VERSUS) returned zero parties — fixed with a gated fallback anchor, plus a
+sharper bug it surfaced (a blank-line heuristic built for an unknown boundary truncated a known one on a PDF layout
+artifact, dropping 3 real Appellants); (2) the GLiNER party judge blanked its own prediction for a real name
+("N. RAM & ORS") purely because of the "& Ors." suffix, and separately rejected a name it split into two adjacent
+spans covering 94% combined because neither span alone hit the old single-span 70% threshold — both fixed. 9 new
+tests; re-swept all 22 `testdata/` docs directly, no regression. Full suite: 75 passed. Full writeup: `FINDINGS.md`
+F-22.
 
 **2026-09-11 — Docling layout layer removed (closes F-15 item 2).** Owner asked why
 Docling was needed given the project's own infra, and to close the question. It was

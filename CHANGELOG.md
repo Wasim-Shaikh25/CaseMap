@@ -4,6 +4,36 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (76) — real fetched affidavits/agreements/petitions surfaced 2 party-extraction bugs; both fixed and tested
+
+Owner asked to fetch real public documents outside `testdata/` and see how
+the pipeline performs. Fetched 5 real documents (real filed SC writ
+petition, real filed NGT appeal, a real affidavit format, two RERA
+Agreement-for-Sale forms) into `temp/2026-09-11-real-docs-fetch-test/`
+(gitignored). Full writeup: `FINDINGS.md` F-22.
+
+1. **`document_profile.extract_parties()`**: added a `BETWEEN: ... AND ...`
+   caption path (tribunal captions with no VERSUS) alongside the existing
+   VERSUS ladder, gated on `BETWEEN:` actually being present. Fixed a second
+   bug this surfaced: `_block_bounds_above()`'s blank-line heuristic (built
+   for an unknown VERSUS block boundary) truncated a known-boundary BETWEEN
+   block on a PDF layout artifact, dropping 3 real Appellants — now skipped
+   when the boundary is already known. `ADDRESS_LINE_RE` extended with
+   `tal.`/`taluka`/`tehsil`/`village` and page-break lines
+   (`Page N of M`) added to caption furniture.
+2. **`casemap_service._judge_party_name()`** (GLiNER): a trailing `& Ors.`/
+   `& Anr.` suffix was blanking the model's prediction entirely for an
+   otherwise-recognized real name ("N. RAM & ORS" -> 0 entities, "N. RAM"
+   alone -> correctly tagged). Now stripped before judging only. Also fixed
+   the coverage check to sum ALL returned entity spans instead of requiring
+   one single span to cover ≥70% — a name GLiNER split into two adjacent
+   spans covering 94% combined was previously rejected.
+
+9 new tests (`tests/test_between_and_caption.py`,
+`tests/test_gliner_party_judge_suffix.py`); re-swept all 22 `testdata/`
+docs directly — identical tier/party-count, no regression. Full suite: 75
+passed (was 66).
+
 ## 2026-09-11 (75) — Docling layout layer removed: never active, redundant with existing OCR, no measured benefit
 
 Owner asked why Docling was needed given the project's own infra, and to

@@ -9,7 +9,78 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 6 · **Fixed:** 13 · **Superseded:** 0
+**Open:** 6 · **Fixed:** 14 · **Superseded:** 0
+
+## F-22 — Fetched real affidavits/agreements/petitions never seen before; found and fixed 2 real party-extraction misses (BETWEEN...AND tribunal captions, a GLiNER false-negative on "& Ors.")
+
+**Date:** 2026-09-11
+**One-liner:** Owner asked to fetch real public documents outside `testdata/`
+(affidavits, agreements, petitions) and see how the pipeline performs. Fetched
+5 real public documents — a real filed SC writ petition (SCObserver), a real
+filed NGT appeal (casi.sas.upenn.edu), a real affidavit format used before
+the SC (CERC), and two RERA-prescribed Agreement for Sale forms (Punjab,
+Maharashtra) — kept in `temp/2026-09-11-real-docs-fetch-test/` (gitignored,
+never committed). Event/fact extraction (SRL layer, F-16) generalized well to
+all 4 document types with zero tuning; rhetorical-role tagging worked
+genuinely on the NGT appeal (it embeds a real tribunal order). Two real gaps
+found in party extraction, both fixed and tested:
+
+**Bug 1 — tribunal `BETWEEN: ... AND ...` captions returned zero parties.**
+`document_profile.extract_parties()`'s cause-title ladder only recognized a
+`VERSUS`-family anchor. The NGT appeal's real caption (`BETWEEN: 1. <party>
+2. <party> .....Appellants. AND 1. <party> ... .....Respondents.`) has no
+VERSUS at all — common in NCLAT/consumer-forum/tribunal captions, not just
+NGT. Fixed: when no VERSUS anchor exists, look for a standalone `BETWEEN:`
+line followed by a standalone `AND` line and use `AND` as the anchor —
+gated on `BETWEEN:` actually being present, so ordinary prose "AND" is never
+mistaken for a caption separator (tested explicitly,
+`test_ordinary_prose_and_is_not_mistaken_for_a_caption_separator`). A second,
+sharper bug surfaced under this path: `_block_bounds_above()`'s generic
+"3 blank lines = left the caption" heuristic (built for the VERSUS case,
+where the block's top boundary is genuinely unknown) tripped on a run of
+blank lines that was a real PDF layout artifact inside the SAME party block,
+truncating it to 2 lines and silently dropping all 3 real Appellants. Fixed
+by NOT reusing that heuristic here — when the `BETWEEN:` anchor is known,
+the block's start is already known exactly (`between_idx + 1`), no walk
+needed. Also fixed in passing: a `Page N of M` PDF page-break line landing
+mid-block was becoming a fake party (added to caption-furniture); `ADDRESS_LINE_RE`
+extended with `tal.`/`taluka`/`tehsil`/`village` (Indian revenue-address
+terms with no plausible party-name reading — deliberately NOT `district`,
+since "District Collector"/"District Judge" are real party titles) so two
+address-continuation lines stop appearing as their own bogus parties. A few
+address fragments (bare state names, "Grampanchayat Tiroda") still leak
+through as noise entries — a known, lower-priority residual, not chased
+further (the ambiguity between "part of an office-holder's name" and "an
+address line" isn't safely resolvable with a quick regex).
+
+**Bug 2 — GLiNER party judge drops a real name because of "& Ors."/"& Anr.".**
+`casemap_service._judge_party_name()` (`urchade/gliner_small-v2.1`, a
+zero-shot span classifier used as a keep/drop judge over the deterministic
+ladder's own candidates) returned **zero entities** for "N. RAM & ORS" (a
+real petitioner from the writ petition above) — confirmed directly: judging
+"N. RAM" alone (no suffix) correctly tags it at 0.40 confidence, but
+appending the suffix blanks the model's prediction entirely. A second,
+related miss: "The Sarpanch, Grampanchayat Tiroda" (a real NGT appellant)
+split into two adjacent GLiNER spans covering 94% of the string combined,
+but the judge's old rule required one SINGLE span to cover ≥70% — neither
+half did, so a name the model plainly recognized (in two pieces) got
+dropped. Fixed: (1) strip a recognized `& Ors.`/`& Anr.`/`& Others`/`and
+Others` suffix before judging only (the stored party name itself keeps the
+suffix — it's real information, not noise); (2) sum entity coverage across
+ALL returned spans, not the single largest one, before the ≥70% test.
+Verified the fix doesn't let real furniture back in — `LIST OF DATES`,
+`SYNOPSIS` still correctly rejected (they return zero GLiNER entities
+regardless, same as before).
+
+**Evidence:** `tests/test_between_and_caption.py` (5 tests, real NGT caption
+excerpt — cause title only, not the case body), `tests/
+test_gliner_party_judge_suffix.py` (4 tests, gated skip-if-model-unavailable
+per this repo's existing pattern). Re-ran the full 22-doc `testdata/` sweep
+directly against `extract_parties_hybrid()` before and after — identical
+tier/party-count per document, no regression. Full suite: 75 passed (was 66).
+**Status:** Fixed. The residual address-fragment noise (see Bug 1) stays a
+known, minor, not-yet-chased gap — flag if it recurs on a real document with
+a clear, safe generalization.
 
 ## F-21 — Docling layout layer removed: never active in the deployed app, fully redundant with the project's own OCR, and its one unique capability never showed a downstream accuracy gain
 
