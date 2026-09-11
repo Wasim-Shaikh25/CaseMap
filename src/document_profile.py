@@ -745,6 +745,82 @@ def extract_parties(text: str, profile: Profile) -> tuple[list[Party], dict]:
     return _filter_caption_furniture_parties(out), meta
 
 
+# A suo motu / narrative cause title names the moving party as one long
+# descriptive phrase ("COURT ON ITS OWN MOTION IN RE: SUICIDE COMMITTED
+# BY..."), not a short name -- real filing, W.P.(CRL) 793/2017 (2026-09-11).
+_NARRATIVE_CAUSE_TITLE_RE = re.compile(
+    r"^\s*(?:court[s]?\s+on\s+(?:its|their)\s+own\s+motion\b|suo\s+mot[ou]\b|"
+    r"in\s+re\s*:)", re.I)
+
+
+def extract_parties_narrative_cause_title(text: str, profile: Profile) -> tuple[list[Party], dict]:
+    """Suo motu / narrative cause titles: the block above VERSUS is ONE
+    party spanning several ALL-CAPS lines with no commas, numbering, or
+    address markers -- the "one entry per line unless explicitly
+    continued" structure extract_parties()/_group_entries() assumes for
+    ordinary captions doesn't hold here, and it silently produces one
+    bogus "party" PER LINE of that phrase instead (real bug, found
+    2026-09-11 on the real judgment above: 10 fragments like "GRIEVANCE
+    REDRESSAL COMMITTEES" and a case number, each treated as its own
+    party).
+
+    Deliberately a SEPARATE function, not a change to extract_parties():
+    it only acts when the block above VERSUS starts with a recognized
+    suo-motu/narrative marker, which an ordinary two-party caption never
+    does -- so extract_parties() and _group_entries() are completely
+    unchanged, and every other document's extraction is unaffected. Below
+    the VERSUS anchor (the Respondent side), it reuses _group_entries()
+    as-is, since that side is normally an ordinary list even when the
+    Petitioner side is narrative.
+    """
+    meta: dict[str, Any] = {"anchor_line": None, "role_source": None}
+    lines = text.splitlines()[:160]
+    anchors = [i for i, l in enumerate(lines) if is_versus_line(l)]
+    if not anchors:
+        return [], meta
+    anchor = anchors[0]
+
+    lo_a = _block_bounds_above(lines, anchor)
+    above = [lines[i].strip() for i in range(lo_a, anchor)
+             if lines[i].strip() and not _PAGE_BREAK_RE.match(lines[i].strip())]
+    # The marker can be preceded by a case-number/title line that
+    # _block_bounds_above() didn't recognize as a boundary and walked past
+    # (real citation formats it doesn't cover, e.g. "W.P.(CRL) 793/2017 &
+    # CRL.M.As.16639/2017, 8850/2024" -- no "No." for CASE_NUMBER_RE to
+    # match). Rather than chase every such format, just find the marker
+    # wherever it sits in the block and build the name from there --
+    # whatever came before it (case number, forum line) is simply not part
+    # of the party name either way.
+    marker_idx = next((i for i, l in enumerate(above)
+                       if _NARRATIVE_CAUSE_TITLE_RE.match(l)), None)
+    if marker_idx is None:
+        return [], meta
+
+    meta["anchor_line"] = anchor
+    # Role markers ("....Petitioner") sit on their own line in the block —
+    # drop them rather than fold them into the joined name.
+    name_lines = [l for l in above[marker_idx:] if not STANDALONE_ROLE_RE.match(l)]
+    name = re.sub(r"\s+", " ", " ".join(name_lines)).strip(" .")
+    if not name:
+        return [], meta
+
+    out = [Party(name, profile.roles[0], "positional", "A", None, lo_a)]
+
+    hi_b = _block_bounds_below(lines, anchor)
+    seen = {name.lower()}
+    for e in _group_entries(lines, anchor + 1, hi_b):
+        key = e["name"].lower().strip()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(Party(e["name"], e["role"] or profile.roles[1],
+                         "explicit" if e["role"] else "positional", "B",
+                         e["ordinal"], e["line_no"]))
+
+    meta["role_source"] = "narrative_cause_title"
+    return _filter_caption_furniture_parties(out), meta
+
+
 # ---------------------------------------------------------------------------
 # Non-cause-title extractors — contracts, notices, affidavits
 # ---------------------------------------------------------------------------
@@ -990,8 +1066,11 @@ class PartyResult:
 
 
 def extract_parties_layered(text: str, filename: str = "") -> PartyResult:
-    """Five-tier party extraction. Never raises, never hard-fails.
+    """Six-tier party extraction. Never raises, never hard-fails.
 
+        TIER 0  narrative/suo-motu cause title (see
+                extract_parties_narrative_cause_title) — cause-title
+                profile only, no-op for anything else
         TIER 1  profile-specific extractor (cause title / recital / letterhead / deponent)
         TIER 2  cause-title fallback — tried for EVERY document type
         TIER 3  deponent-clause fallback
@@ -1008,6 +1087,17 @@ def extract_parties_layered(text: str, filename: str = "") -> PartyResult:
 
     if not (text or "").strip():
         return PartyResult([], "tier5_none", "empty document", "none", meta_base)
+
+    # TIER 0 — checked first, but a no-op unless the block above VERSUS
+    # actually starts with a suo-motu/narrative marker (see the function's
+    # own docstring); ordinary captions fall straight through to TIER 1
+    # exactly as before this tier existed.
+    if profile.role_source == "cause_title":
+        parties, meta = extract_parties_narrative_cause_title(text, profile)
+        if parties:
+            return PartyResult(parties, "tier0_narrative_cause_title",
+                               f"{profile.id} profile, narrative/suo-motu cause title",
+                               "medium", {**meta_base, **meta})
 
     # TIER 1
     fn = _EXTRACTORS.get(profile.role_source or "")
