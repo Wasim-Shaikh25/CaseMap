@@ -932,9 +932,23 @@ def process_document(path: str, name: str, ml_nlp, ocr_engine: str = "tesseract"
     # kept_parties/dropped_parties feed both "parties" and
     # "party_judge_dropped" so the UI can show what was rejected instead of
     # leaving the reader looking at an unexplained empty list.
-    kept_parties, dropped_parties = [], []
-    for p in party_result.parties:
-        (kept_parties if _judge_party_name(p.name) else dropped_parties).append(p)
+    #
+    # tier0_narrative_cause_title is the one exception: the judge is a
+    # generic "does this look like a real person/org name" classifier, and
+    # a suo-motu petitioner phrase ("COURT ON ITS OWN MOTION IN RE:
+    # SUICIDE COMMITTED BY...") never will, even though it's a standard,
+    # correct way of naming the moving party in that kind of proceeding.
+    # That tier's own extraction is already high-precision -- gated on an
+    # explicit suo-motu/narrative marker, verified against every real
+    # testdata document with zero false positives -- so its output is
+    # trusted directly rather than run through a name-shape check built
+    # for ordinary person/org names.
+    if party_result.tier == "tier0_narrative_cause_title":
+        kept_parties, dropped_parties = list(party_result.parties), []
+    else:
+        kept_parties, dropped_parties = [], []
+        for p in party_result.parties:
+            (kept_parties if _judge_party_name(p.name) else dropped_parties).append(p)
 
     return {
         "name": name,
