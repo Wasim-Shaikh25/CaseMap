@@ -922,6 +922,20 @@ def process_document(path: str, name: str, ml_nlp, ocr_engine: str = "tesseract"
         _attach_context([fb], fb["section_text"])
         events.append(fb)
 
+    # Party judge (GLiNER) runs after extract_parties_hybrid(), not instead
+    # of it — it only decides keep/drop on names the existing ML+deterministic
+    # layers already produced, never proposes a name of its own. Judged once
+    # per name here (not once per output list) since each call is a model
+    # inference. A dropped name never silently vanishes without trace:
+    # party_tier/party_confidence below still reflect the underlying
+    # extraction's own confidence regardless of what the judge did, and
+    # kept_parties/dropped_parties feed both "parties" and
+    # "party_judge_dropped" so the UI can show what was rejected instead of
+    # leaving the reader looking at an unexplained empty list.
+    kept_parties, dropped_parties = [], []
+    for p in party_result.parties:
+        (kept_parties if _judge_party_name(p.name) else dropped_parties).append(p)
+
     return {
         "name": name,
         "pages": len(pages),
@@ -931,19 +945,9 @@ def process_document(path: str, name: str, ml_nlp, ocr_engine: str = "tesseract"
         "structure_reason": struct_meta["tier_reason"],
         "sections": len(sections),
         "events": events,
-        # Party judge (GLiNER) runs after extract_parties_hybrid(), not
-        # instead of it — it only decides keep/drop on names the existing
-        # ML+deterministic layers already produced, never proposes a name
-        # of its own. A dropped name never silently vanishes without
-        # trace: party_tier/party_confidence below still reflect the
-        # underlying extraction's own confidence regardless of what the
-        # judge did, and party_judge_dropped (below) carries exactly what
-        # was found and rejected, so the UI can show it instead of leaving
-        # the reader looking at an unexplained empty list.
         "parties": [{"name": p.name, "role": p.role, "confidence": p.role_confidence}
-                    for p in party_result.parties if _judge_party_name(p.name)],
-        "party_judge_dropped": [{"name": p.name, "role": p.role}
-                                 for p in party_result.parties if not _judge_party_name(p.name)],
+                    for p in kept_parties],
+        "party_judge_dropped": [{"name": p.name, "role": p.role} for p in dropped_parties],
         "party_tier": party_result.tier,
         "party_confidence": party_result.confidence,
         "sections_cited": sorted(set(all_sections_cited)),
