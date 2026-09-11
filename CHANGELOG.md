@@ -4,6 +4,25 @@ All notable changes to `CaseMap`. Newest first. Append an entry as part of
 every change (see `AGENTS.md` §5). **Never renumber or edit a past entry** — if two
 entries collide on a number, suffix the later one (`3` → `3b`).
 
+## 2026-09-11 (70) — polarity (DENIES/ASSERTS) gets a dependency-parse signal alongside the fixed phrase lists, same fix class as (68)
+
+Owner asked to fix `DENIAL_MARKERS`/`ASSERTION_MARKERS` the same way as (68)
+— they're the same fixed-phrase-list problem, just for conflict-detection
+polarity instead of event detection. See `FINDINGS.md` F-18.
+
+1. **`casemap_pipeline._classify_polarity()`**: after the existing
+   `DENIAL_MARKERS`/`ASSERTION_MARKERS` phrase checks (kept, unchanged —
+   idiomatic phrases like "false and baseless" have no verb to key off), a
+   second pass checks `en_core_web_sm`'s own `neg` dependency tag (real
+   syntactic negation on any verb) and two small new verb-lemma sets
+   (`DENIAL_VERB_LEMMAS`, `ASSERTION_VERB_LEMMAS`) — same model already
+   loaded for entity extraction, no new dependency.
+2. Catches phrasing the old list missed: "has not received", "is denying",
+   "refutes the claim" → DENIES; "counsel contends that" → ASSERTS.
+3. Verified with direct unit checks on both the newly-caught cases and the
+   existing phrase-list cases (unaffected). Full `pytest`: 62 passed, 1
+   skipped, no regressions.
+
 ## 2026-09-11 (69) — new, opt-in: cited provisions' own text fetched from IndianKanoon.org
 
 Owner asked for a free web lookup showing what a cited provision actually

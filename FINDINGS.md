@@ -9,7 +9,35 @@
 > rewrite what it originally said. If a later result supersedes one, add a banner naming
 > the successor.
 
-**Open:** 8 · **Fixed:** 9 · **Superseded:** 0
+**Open:** 8 · **Fixed:** 10 · **Superseded:** 0
+
+## F-18 — `DENIAL_MARKERS`/`ASSERTION_MARKERS` fixed-phrase polarity missed real denials/assertions; added a dependency-parse signal alongside them
+
+**Date:** 2026-09-11
+**One-liner:** Same failure class as F-16, in `_classify_polarity()`
+(`casemap_pipeline.py`): `DENIAL_MARKERS`/`ASSERTION_MARKERS` only fire on an
+exact phrase ("did not receive", "states that"). "Has not received", "is
+denying", "refutes the claim", "counsel contends that" all fell through to
+NEUTRAL, which is what drives conflict detection (`build_case_graph`'s
+DENIES/ASSERTS matching) — a real denial phrased slightly differently than
+the enumerated list simply never became a conflict.
+
+**Fix:** `DENIAL_VERB_LEMMAS`/`ASSERTION_VERB_LEMMAS` (new, small verb-lemma
+sets) plus spaCy's own `neg` dependency tag (real syntactic negation,
+catches "not"/"never" attached to *any* verb) are checked as a second pass
+**after** the original phrase lists, using `en_core_web_sm` — already
+mandatory-loaded for entity extraction, no new model. **Additive, not a
+replacement**: idiomatic non-verbal phrases ("false and baseless", "wrongly
+alleged") have no verb or negation particle to key off, so the original
+`DENIAL_MARKERS`/`ASSERTION_MARKERS` phrase lists stay exactly as they were
+and are checked first.
+
+**Verified:** direct unit check — "the respondent has not received any
+payment" and "the petitioner refutes the claim entirely" (both real phrasing
+the old list missed) now correctly return `DENIES`; "counsel contends that
+the notice was invalid" now correctly returns `ASSERTS`; existing phrase-list
+cases and a neutral control sentence unaffected. Full `pytest`: 62 passed, 1
+skipped, no regressions.
 
 ## F-17 — New capability: opt-in provision lookup (`src/provision_lookup.py`), the pipeline's first outbound network call
 

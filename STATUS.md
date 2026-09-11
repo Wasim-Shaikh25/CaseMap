@@ -26,7 +26,16 @@ is at `src/layout_structure.py`; `case_symbols.py` is at `src/case_symbols.py`;
 `blueprint2.md`, `make_real_pdfs.py`, `real_docs/` — verify before relying on them
 (see `HANDOFF.md` §6).
 
-**Last updated:** 2026-09-11 (entry 69: new opt-in provision lookup — IndianKanoon.org fetch of a cited provision's own text, off by default, see FINDINGS.md F-17)
+**Last updated:** 2026-09-11 (entry 70: polarity (DENIES/ASSERTS) gets a dependency-parse signal alongside the fixed phrase lists, see FINDINGS.md F-18)
+
+**2026-09-11 — Polarity classification: dependency-parse signal added alongside `DENIAL_MARKERS`/`ASSERTION_MARKERS`.**
+Same fixed-phrase-list gap as entry (68)'s event detection fix, this time in `_classify_polarity()` — the function
+conflict detection keys off. `en_core_web_sm`'s `neg` dependency tag (real syntactic negation on any verb) plus two
+new small verb-lemma sets now run as a second pass after the existing phrase lists (kept, unchanged — idiomatic
+phrases like "false and baseless" have no verb to key off). Catches "has not received", "refutes the claim",
+"counsel contends that" — all previously NEUTRAL, meaning a real denial phrased slightly differently than the
+enumerated list never became a conflict. No new model. Verified with direct unit checks; `pytest`: 62 passed, 1
+skipped.
 
 **2026-09-11 — New capability: opt-in provision lookup, first outbound network call in this pipeline.** Owner
 asked for a free web lookup so a cited provision's own text shows up next to it, scoped explicitly to "only the

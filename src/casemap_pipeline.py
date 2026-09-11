@@ -781,6 +781,26 @@ DENIAL_MARKERS = ["denies", "denied", "no such", "did not receive", "never recei
 ASSERTION_MARKERS = ["states that", "submits that", "acknowledges", "confirms",
                      "admits", "it is averred"]
 
+# Dependency-parse polarity signal (F-18), UNION'd with the phrase lists
+# above rather than replacing them -- same reasoning as EVENT_VERB_LEMMAS:
+# DENIAL_MARKERS/ASSERTION_MARKERS only fire on an exact phrase ("did not
+# receive") and miss the same claim in any other phrasing ("has not
+# received", "never was paid", "is denying", "refutes the claim"). Two
+# independent signals from en_core_web_sm's own parse, already loaded for
+# entity extraction, catch what the phrase list can't:
+#   1. Real syntactic negation (spaCy's "neg" dependency tag) -- catches
+#      "not"/"never" attached to ANY verb, regardless of which verb.
+#   2. A denial/assertion VERB LEMMA as the sentence's own root or a clausal
+#      complement verb -- catches "refutes"/"disputes"/"contends"/"avers"
+#      etc. that DENIAL_MARKERS/ASSERTION_MARKERS never enumerated.
+# Idiomatic non-verbal phrases ("false and baseless", "wrongly alleged")
+# have no verb or negation particle to key off, which is exactly why the
+# original phrase lists are kept rather than dropped -- this is additive,
+# like F-16/F-17, not a replacement.
+DENIAL_VERB_LEMMAS = {"deny", "dispute", "refute", "contest", "rebut", "refuse"}
+ASSERTION_VERB_LEMMAS = {"state", "submit", "acknowledge", "confirm", "admit",
+                         "aver", "contend", "assert", "allege"}
+
 WINDOW = 400  # chars either side of a keyword hit, for local context
 
 
@@ -998,6 +1018,27 @@ def _classify_polarity(text_lower: str) -> str:
     if any(m in text_lower for m in DENIAL_MARKERS):
         return "DENIES"
     if any(m in text_lower for m in ASSERTION_MARKERS):
+        return "ASSERTS"
+
+    # Phrase list found nothing -- try the dependency-parse signal before
+    # falling back to NEUTRAL (F-18). Original-case text is not available
+    # here (every caller already lowercases before calling, matching the
+    # phrase-list checks above); en_core_web_sm's dependency parse and
+    # lemmatizer both degrade gracefully on lowercased input -- POS tagging
+    # is somewhat less accurate on it, but dep_=="neg" and verb lemmas are
+    # stable enough for this purpose, and changing every call site's
+    # lowercasing to preserve case was judged not worth the churn for that
+    # marginal accuracy gain.
+    global _NLP
+    if _NLP is None:
+        import spacy
+        _NLP = spacy.load("en_core_web_sm")
+    doc = _NLP(text_lower)
+    verb_lemmas = {tok.lemma_ for tok in doc if tok.pos_ in ("VERB", "AUX")}
+    has_negation = any(tok.dep_ == "neg" for tok in doc)
+    if has_negation or (verb_lemmas & DENIAL_VERB_LEMMAS):
+        return "DENIES"
+    if verb_lemmas & ASSERTION_VERB_LEMMAS:
         return "ASSERTS"
     return "NEUTRAL"
 
