@@ -1,5 +1,11 @@
 name: Deploy to VPS
 
+# DISABLED (renamed off .yml so GitHub Actions no longer picks this up):
+# Coolify now owns build+deploy for this repo, triggered by its own
+# GitHub webhook on push to main. This workflow's manual docker-compose
+# flow on /opt/casemap would otherwise fight Coolify for ports 80/443
+# and container names on every push. Kept for reference/rollback.
+#
 # Fires on every push to main -- i.e. every PR merge, plus direct pushes.
 # Builds nothing here: this workflow only SSHes into the VPS and tells it
 # to pull the new source and rebuild the image in place (docker-compose.yml's
