@@ -20,10 +20,15 @@ FROM python:3.11.9-slim-bookworm
 #                      to a source build. Kept in the final image for
 #                      simplicity/reliability over shaving image size with
 #                      a multi-stage build.
+#   curl            — Coolify's default container healthcheck runs curl
+#                      against health_check_path from inside the
+#                      container; the base slim image has neither curl
+#                      nor wget, which fails every deploy before this.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         tesseract-ocr \
         libglib2.0-0 \
         build-essential \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
